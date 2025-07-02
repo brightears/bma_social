@@ -280,12 +280,12 @@ async def delete_message(
     if message.sender_user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(status_code=403, detail="Not authorized to delete this message")
     
-    # Soft delete by marking as deleted in metadata
-    if not message.metadata:
-        message.metadata = {}
-    message.metadata["deleted"] = True
-    message.metadata["deleted_by"] = str(current_user.id)
-    message.metadata["deleted_at"] = datetime.utcnow().isoformat()
+    # Soft delete by marking as deleted in extra_data
+    if not message.extra_data:
+        message.extra_data = {}
+    message.extra_data["deleted"] = True
+    message.extra_data["deleted_by"] = str(current_user.id)
+    message.extra_data["deleted_at"] = datetime.utcnow().isoformat()
     
     await db.commit()
     

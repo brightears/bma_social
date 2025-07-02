@@ -28,4 +28,4 @@ class Customer(BaseModel):
     
     # Additional data
     tags = Column(JSON, default=list)
-    metadata = Column(JSON, default=dict)
+    extra_data = Column(JSON, default=dict)

@@ -136,7 +136,7 @@ async def handle_incoming_message(db: AsyncSession, message_data: dict):
         direction=MessageDirection.INBOUND,
         status=MessageStatus.DELIVERED,
         external_id=message_data["message_id"],
-        metadata={
+        extra_data={
             "whatsapp_timestamp": message_data["timestamp"],
             "context": message_data.get("context")
         }

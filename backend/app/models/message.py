@@ -50,7 +50,7 @@ class Message(BaseModel):
     template_name = Column(String, nullable=True)  # For template messages
     
     # Additional data
-    metadata = Column(JSON, default=dict)  # Store provider-specific data
+    extra_data = Column(JSON, default=dict)  # Store provider-specific data
     error_message = Column(String, nullable=True)  # For failed messages
     
     # Relationships
