@@ -17,7 +17,7 @@ python-multipart==0.0.6
 
 # WhatsApp API
 httpx==0.25.2
-aiohttp==3.9.1
+aiohttp==3.8.5
 
 # Line API
 line-bot-sdk==3.5.0
