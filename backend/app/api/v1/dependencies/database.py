@@ -13,8 +13,16 @@ def get_engine():
     if _engine is None:
         if not settings.DATABASE_URL:
             raise ValueError("DATABASE_URL environment variable is not set")
+        
+        # Convert database URL to use asyncpg
+        db_url = settings.DATABASE_URL
+        if db_url.startswith("postgres://"):
+            db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        
         _engine = create_async_engine(
-            settings.DATABASE_URL,
+            db_url,
             echo=settings.DEBUG,
             pool_size=settings.DATABASE_POOL_SIZE,
             max_overflow=settings.DATABASE_MAX_OVERFLOW,
