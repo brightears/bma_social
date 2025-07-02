@@ -1,93 +1,214 @@
-from fastapi import APIRouter, HTTPException, status, Request
-from typing import Any, List, Optional
-from pydantic import BaseModel
+from fastapi import APIRouter, Request, Response, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+import logging
+import json
+from typing import Optional
 from datetime import datetime
 
+from app.core.config import settings
+from app.services.whatsapp_service import whatsapp_service
+from app.models import (
+    Customer, Conversation, Message,
+    ConversationChannel, ConversationStatus,
+    MessageType, MessageDirection, MessageStatus
+)
+from app.api.v1.dependencies import get_db
+
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-class WebhookCreate(BaseModel):
-    url: str
-    events: List[str]
-    is_active: bool = True
-    secret: Optional[str] = None
-
-
-class WebhookResponse(BaseModel):
-    id: int
-    url: str
-    events: List[str]
-    is_active: bool
-    created_at: datetime
-    last_triggered_at: Optional[datetime]
-
-
-@router.get("/", response_model=List[WebhookResponse], summary="Get all webhooks")
-async def get_webhooks(skip: int = 0, limit: int = 100) -> Any:
+@router.get("/whatsapp")
+async def verify_webhook(
+    hub_mode: str = Query(None, alias="hub.mode"),
+    hub_verify_token: str = Query(None, alias="hub.verify_token"),
+    hub_challenge: str = Query(None, alias="hub.challenge")
+):
     """
-    Retrieve all webhooks.
+    WhatsApp webhook verification endpoint
     """
-    # TODO: Implement webhook retrieval logic
-    return []
+    if hub_mode == "subscribe" and hub_verify_token == settings.WHATSAPP_VERIFY_TOKEN:
+        logger.info("WhatsApp webhook verified successfully")
+        return Response(content=hub_challenge)
+    
+    logger.warning(f"Invalid webhook verification attempt: {hub_verify_token}")
+    raise HTTPException(status_code=403, detail="Verification failed")
 
 
-@router.get("/{webhook_id}", response_model=WebhookResponse, summary="Get webhook by ID")
-async def get_webhook(webhook_id: int) -> Any:
+@router.post("/whatsapp")
+async def whatsapp_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Get a specific webhook by ID.
+    Handle incoming WhatsApp webhooks (messages and status updates)
     """
-    # TODO: Implement webhook retrieval logic
-    raise HTTPException(status_code=404, detail="Webhook not found")
+    try:
+        # Get raw body for logging
+        body = await request.json()
+        logger.info(f"Received WhatsApp webhook: {json.dumps(body)}")
+        
+        # Parse message
+        message_data = whatsapp_service.parse_webhook_message(body)
+        if message_data:
+            await handle_incoming_message(db, message_data)
+            return {"status": "ok"}
+        
+        # Parse status update
+        status_data = whatsapp_service.parse_webhook_status(body)
+        if status_data:
+            await handle_status_update(db, status_data)
+            return {"status": "ok"}
+        
+        logger.info("Webhook received but no message or status to process")
+        return {"status": "ok"}
+        
+    except Exception as e:
+        logger.error(f"Error processing WhatsApp webhook: {e}", exc_info=True)
+        # Return 200 to prevent WhatsApp from retrying
+        return {"status": "error", "message": str(e)}
 
 
-@router.post("/", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED, summary="Create new webhook")
-async def create_webhook(webhook: WebhookCreate) -> Any:
-    """
-    Create a new webhook.
-    """
-    # TODO: Implement webhook creation logic
-    return WebhookResponse(
-        id=1,
-        url=webhook.url,
-        events=webhook.events,
-        is_active=webhook.is_active,
-        created_at=datetime.now(),
-        last_triggered_at=None
+async def handle_incoming_message(db: AsyncSession, message_data: dict):
+    """Process incoming WhatsApp message"""
+    
+    # 1. Find or create customer
+    phone = message_data["from_phone"]
+    customer_result = await db.execute(
+        select(Customer).where(Customer.whatsapp_id == phone)
     )
+    customer = customer_result.scalar_one_or_none()
+    
+    if not customer:
+        # Create new customer
+        customer = Customer(
+            name=message_data["from_name"],
+            phone=phone,
+            whatsapp_id=phone,
+            preferred_channel="whatsapp",
+            is_active=True
+        )
+        db.add(customer)
+        await db.flush()
+        logger.info(f"Created new customer: {customer.name} ({phone})")
+    
+    # 2. Find or create conversation
+    conv_result = await db.execute(
+        select(Conversation).where(
+            Conversation.customer_id == customer.id,
+            Conversation.channel == ConversationChannel.WHATSAPP,
+            Conversation.status != ConversationStatus.CLOSED
+        ).order_by(Conversation.created_at.desc())
+    )
+    conversation = conv_result.scalar_one_or_none()
+    
+    if not conversation:
+        # Create new conversation
+        conversation = Conversation(
+            customer_id=customer.id,
+            channel=ConversationChannel.WHATSAPP,
+            status=ConversationStatus.OPEN,
+            last_message_at=datetime.utcnow()
+        )
+        db.add(conversation)
+        await db.flush()
+        logger.info(f"Created new conversation for customer {customer.name}")
+    
+    # 3. Create message record
+    message_type = MessageType.TEXT
+    if message_data["type"] == "image":
+        message_type = MessageType.IMAGE
+    elif message_data["type"] == "video":
+        message_type = MessageType.VIDEO
+    elif message_data["type"] == "audio":
+        message_type = MessageType.AUDIO
+    elif message_data["type"] == "document":
+        message_type = MessageType.DOCUMENT
+    elif message_data["type"] == "location":
+        message_type = MessageType.LOCATION
+    
+    message = Message(
+        conversation_id=conversation.id,
+        type=message_type,
+        content=message_data["content"],
+        media_url=message_data.get("media_url"),
+        direction=MessageDirection.INBOUND,
+        status=MessageStatus.DELIVERED,
+        external_id=message_data["message_id"],
+        metadata={
+            "whatsapp_timestamp": message_data["timestamp"],
+            "context": message_data.get("context")
+        }
+    )
+    db.add(message)
+    
+    # Update conversation
+    conversation.last_message_at = datetime.utcnow()
+    conversation.unread_count += 1
+    
+    await db.commit()
+    logger.info(f"Saved incoming message {message.id} from {customer.name}")
+    
+    # TODO: Send real-time notification to connected agents
 
 
-@router.put("/{webhook_id}", response_model=WebhookResponse, summary="Update webhook")
-async def update_webhook(webhook_id: int, webhook: WebhookCreate) -> Any:
-    """
-    Update a webhook.
-    """
-    # TODO: Implement webhook update logic
-    raise HTTPException(status_code=404, detail="Webhook not found")
+async def handle_status_update(db: AsyncSession, status_data: dict):
+    """Process message status updates"""
+    
+    # Find message by external ID
+    result = await db.execute(
+        select(Message).where(Message.external_id == status_data["message_id"])
+    )
+    message = result.scalar_one_or_none()
+    
+    if not message:
+        logger.warning(f"Received status for unknown message: {status_data['message_id']}")
+        return
+    
+    # Update status
+    status_map = {
+        "sent": MessageStatus.SENT,
+        "delivered": MessageStatus.DELIVERED,
+        "read": MessageStatus.READ,
+        "failed": MessageStatus.FAILED
+    }
+    
+    new_status = status_map.get(status_data["status"])
+    if new_status:
+        message.status = new_status
+        if new_status == MessageStatus.FAILED and status_data.get("errors"):
+            message.error_message = json.dumps(status_data["errors"])
+        
+        await db.commit()
+        logger.info(f"Updated message {message.id} status to {new_status}")
+    
+    # TODO: Send real-time status update to connected agents
 
 
-@router.delete("/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Delete webhook")
-async def delete_webhook(webhook_id: int) -> None:
+@router.post("/line")
+async def line_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Delete a webhook.
+    Handle incoming LINE webhooks
     """
-    # TODO: Implement webhook deletion logic
-    pass
-
-
-@router.post("/incoming/{provider}", summary="Handle incoming webhook from provider")
-async def handle_incoming_webhook(provider: str, request: Request) -> Any:
-    """
-    Handle incoming webhooks from SMS providers (Twilio, etc.).
-    """
-    # TODO: Implement incoming webhook handling logic
+    # TODO: Implement LINE webhook handling
     body = await request.json()
-    return {"status": "received", "provider": provider}
+    logger.info(f"Received LINE webhook: {json.dumps(body)}")
+    return {"status": "ok"}
 
 
-@router.post("/{webhook_id}/test", summary="Test webhook")
-async def test_webhook(webhook_id: int) -> Any:
+@router.post("/generic")
+async def generic_webhook(
+    provider: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
     """
-    Send a test payload to a webhook.
+    Generic webhook endpoint for other providers
     """
-    # TODO: Implement webhook testing logic
-    return {"status": "test_sent", "webhook_id": webhook_id}
+    body = await request.json()
+    logger.info(f"Received {provider} webhook: {json.dumps(body)}")
+    return {"status": "ok", "provider": provider}
