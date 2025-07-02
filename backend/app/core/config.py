@@ -8,13 +8,13 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "BMA Social"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
     ENVIRONMENT: str = "development"
     
     # Database
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
     DATABASE_POOL_SIZE: int = 20
     DATABASE_MAX_OVERFLOW: int = 40
     

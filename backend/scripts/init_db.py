@@ -13,7 +13,7 @@ from app.models.base import Base
 from app.models import User
 from app.core.config import settings
 from app.core.security import get_password_hash
-from app.api.v1.dependencies.database import AsyncSessionLocal
+from app.api.v1.dependencies.database import get_session_maker
 
 
 async def init_db():
@@ -30,6 +30,7 @@ async def init_db():
     print("Tables created successfully!")
     
     # Create first superuser
+    AsyncSessionLocal = get_session_maker()
     async with AsyncSessionLocal() as session:
         # Check if superuser already exists
         from sqlalchemy import select
