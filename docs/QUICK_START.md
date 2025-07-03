@@ -47,10 +47,17 @@ BMA Social is a unified communication platform that allows your team to manage W
 3. ✅ Storing conversations and customer data
 4. ✅ JWT Authentication
 5. ✅ React frontend deployed
+6. ✅ Login functionality working
+7. ✅ Conversation list display
+8. ✅ Click to view individual conversations
+9. ✅ Send messages to specific conversations
+10. ✅ Auto-refresh for new messages (every 3 seconds)
 
-## Current Issue
-- 🚧 CORS error preventing frontend login
-- Workaround: Use API directly with curl/Postman
+## Recently Fixed
+- ✅ CORS issue resolved (temporarily allowing all origins)
+- ✅ Conversation click handling fixed (ListItem → ListItemButton)
+- ✅ Message ordering corrected (oldest to newest)
+- ✅ Added auto-refresh for real-time updates
 
 ## Testing the API
 
