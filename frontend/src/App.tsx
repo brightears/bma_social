@@ -7,6 +7,9 @@ import Login from './pages/Login';
 import Conversations from './pages/Conversations';
 import Contacts from './pages/Contacts';
 import Campaigns from './pages/Campaigns';
+import Quotations from './pages/Quotations';
+import QuotationForm from './pages/QuotationForm';
+import QuotationView from './pages/QuotationView';
 import Layout from './components/Layout';
 import authService from './services/auth.service';
 
@@ -59,6 +62,46 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Campaigns />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/quotations"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Quotations />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/quotations/new"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <QuotationForm />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/quotations/:id"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <QuotationView />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/quotations/:id/edit"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <QuotationForm />
                 </Layout>
               </PrivateRoute>
             }

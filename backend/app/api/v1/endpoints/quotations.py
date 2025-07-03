@@ -451,8 +451,8 @@ async def send_quotation(
     
     # Send based on channel
     if send_request.channel == "whatsapp":
-        if not customer.whatsapp_id:
-            raise HTTPException(status_code=400, detail="Customer has no WhatsApp ID")
+        if not customer.whatsapp_id and not customer.phone:
+            raise HTTPException(status_code=400, detail="Customer has no WhatsApp ID or phone number")
         
         # Upload PDF to WhatsApp
         media_id = await whatsapp_service.upload_media(pdf_bytes)
@@ -461,9 +461,12 @@ async def send_quotation(
         default_message = f"Hello {customer.name},\n\nPlease find attached your quotation {quotation.quote_number} for {quotation.title}.\n\nTotal Amount: ฿{quotation.total_amount:,.2f}\n\nThis quotation is valid for {quotation.validity_days} days."
         message = send_request.message or default_message
         
-        # Send document
+        # Send document - format phone number if needed
+        phone_number = customer.whatsapp_id or customer.phone
+        formatted_phone = whatsapp_service.format_phone_number(phone_number)
+        
         await whatsapp_service.send_document_message(
-            to_phone=customer.whatsapp_id,
+            to_phone=formatted_phone,
             document_id=media_id,
             filename=f"Quotation_{quotation.quote_number}.pdf",
             caption=message

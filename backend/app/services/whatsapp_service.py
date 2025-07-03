@@ -264,12 +264,12 @@ class WhatsAppService:
     
     async def upload_media(self, file_data: bytes, file_type: str = "application/pdf") -> str:
         """Upload media to WhatsApp and get media ID"""
-        url = f"{self.base_url}/media"
+        url = f"{self.base_url}/{self.phone_number_id}/media"
         
         files = {
             'file': ('document.pdf', file_data, file_type),
             'messaging_product': (None, 'whatsapp'),
-            'type': (None, 'application/pdf')
+            'type': (None, file_type)
         }
         
         async with httpx.AsyncClient() as client:
@@ -285,7 +285,7 @@ class WhatsAppService:
     async def send_document_message(self, to_phone: str, document_url: str = None, document_id: str = None, 
                                    filename: str = "document.pdf", caption: str = None) -> dict:
         """Send a document message via WhatsApp"""
-        url = f"{self.base_url}/messages"
+        url = f"{self.base_url}/{self.phone_number_id}/messages"
         
         message_data = {
             "messaging_product": "whatsapp",

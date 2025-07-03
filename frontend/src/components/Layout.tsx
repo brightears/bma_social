@@ -17,6 +17,7 @@ import {
   Dashboard as DashboardIcon,
   People as PeopleIcon,
   Campaign as CampaignIcon,
+  Receipt as ReceiptIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -46,6 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { text: 'Conversations', icon: <DashboardIcon />, path: '/' },
     { text: 'Contacts', icon: <PeopleIcon />, path: '/contacts' },
     { text: 'Campaigns', icon: <CampaignIcon />, path: '/campaigns' },
+    { text: 'Quotations', icon: <ReceiptIcon />, path: '/quotations' },
   ];
 
   const drawer = (
@@ -60,7 +62,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {menuItems.map((item) => (
           <ListItemButton
             key={item.text}
-            selected={location.pathname === item.path}
+            selected={item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)}
             onClick={() => navigate(item.path)}
           >
             <ListItemIcon>{item.icon}</ListItemIcon>
@@ -100,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            {menuItems.find((item) => item.path === location.pathname)?.text || 'BMA Social'}
+            {menuItems.find((item) => item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path))?.text || 'BMA Social'}
           </Typography>
         </Toolbar>
       </AppBar>
