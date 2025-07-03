@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
 from datetime import datetime
 import csv
 import io
@@ -24,6 +24,12 @@ class ContactCreate(BaseModel):
     line_id: Optional[str] = None
     tags: List[str] = []
     notes: Optional[str] = None
+    
+    @validator('email', 'whatsapp_id', 'line_id', 'notes', pre=True)
+    def empty_str_to_none(cls, v):
+        if v == '':
+            return None
+        return v
 
 
 class ContactUpdate(BaseModel):
@@ -34,6 +40,12 @@ class ContactUpdate(BaseModel):
     line_id: Optional[str] = None
     tags: Optional[List[str]] = None
     notes: Optional[str] = None
+    
+    @validator('email', 'whatsapp_id', 'line_id', 'notes', 'name', 'phone', pre=True)
+    def empty_str_to_none(cls, v):
+        if v == '':
+            return None
+        return v
 
 
 class ContactResponse(BaseModel):
@@ -124,51 +136,65 @@ async def create_contact(
 ):
     """Create a new contact"""
     
-    # Check if contact already exists
-    existing = await db.execute(
-        select(Customer).where(
-            or_(
-                Customer.phone == contact.phone,
-                and_(Customer.email == contact.email, contact.email is not None)
+    try:
+        # Check if contact already exists
+        existing = await db.execute(
+            select(Customer).where(
+                or_(
+                    Customer.phone == contact.phone,
+                    and_(Customer.email == contact.email, contact.email is not None)
+                )
             )
         )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Contact with this phone or email already exists"
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Contact with this phone or email already exists"
+            )
+        
+        # Validate and clean email
+        email_value = None
+        if contact.email:
+            email_value = contact.email.strip() if contact.email.strip() else None
+        
+        # Create new customer
+        db_contact = Customer(
+            name=contact.name,
+            phone=contact.phone,
+            email=email_value,
+            whatsapp_id=contact.whatsapp_id or contact.phone,  # Default to phone
+            line_id=contact.line_id,
+            extra_data={
+                "tags": contact.tags,
+                "notes": contact.notes,
+                "created_by": str(current_user.id)
+            }
         )
-    
-    # Create new customer
-    db_contact = Customer(
-        name=contact.name,
-        phone=contact.phone,
-        email=contact.email,
-        whatsapp_id=contact.whatsapp_id or contact.phone,  # Default to phone
-        line_id=contact.line_id,
-        extra_data={
-            "tags": contact.tags,
-            "notes": contact.notes,
-            "created_by": str(current_user.id)
-        }
-    )
-    
-    db.add(db_contact)
-    await db.commit()
-    await db.refresh(db_contact)
-    
-    return ContactResponse(
-        id=str(db_contact.id),
-        name=db_contact.name,
-        phone=db_contact.phone,
-        email=db_contact.email,
-        whatsapp_id=db_contact.whatsapp_id,
-        line_id=db_contact.line_id,
-        tags=db_contact.extra_data.get("tags", []),
-        notes=db_contact.extra_data.get("notes"),
-        created_at=db_contact.created_at,
-        updated_at=db_contact.updated_at
-    )
+        
+        db.add(db_contact)
+        await db.commit()
+        await db.refresh(db_contact)
+        
+        return ContactResponse(
+            id=str(db_contact.id),
+            name=db_contact.name,
+            phone=db_contact.phone,
+            email=db_contact.email,
+            whatsapp_id=db_contact.whatsapp_id,
+            line_id=db_contact.line_id,
+            tags=db_contact.extra_data.get("tags", []),
+            notes=db_contact.extra_data.get("notes"),
+            created_at=db_contact.created_at,
+            updated_at=db_contact.updated_at
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error creating contact: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create contact: {str(e)}"
+        )
 
 
 @router.get("/{contact_id}", response_model=ContactResponse)

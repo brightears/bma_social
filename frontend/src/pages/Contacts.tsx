@@ -119,11 +119,20 @@ const Contacts: React.FC = () => {
 
   const handleSaveContact = async () => {
     try {
+      // Clean up form data
+      const contactData = {
+        ...formData,
+        email: formData.email?.trim() || undefined,
+        whatsapp_id: formData.whatsapp_id?.trim() || undefined,
+        line_id: formData.line_id?.trim() || undefined,
+        notes: formData.notes?.trim() || undefined,
+      };
+
       if (editingContact) {
-        await contactService.updateContact(editingContact.id, formData as ContactUpdate);
+        await contactService.updateContact(editingContact.id, contactData as ContactUpdate);
         showSnackbar('Contact updated successfully', 'success');
       } else {
-        await contactService.createContact(formData);
+        await contactService.createContact(contactData);
         showSnackbar('Contact created successfully', 'success');
       }
       handleCloseDialog();
