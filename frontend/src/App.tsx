@@ -6,6 +6,7 @@ import { Typography } from '@mui/material';
 import Login from './pages/Login';
 import Conversations from './pages/Conversations';
 import Contacts from './pages/Contacts';
+import Campaigns from './pages/Campaigns';
 import Layout from './components/Layout';
 import authService from './services/auth.service';
 
@@ -57,9 +58,7 @@ function App() {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Typography variant="h4" sx={{ mb: 3 }}>
-                    Campaigns - Coming Soon
-                  </Typography>
+                  <Campaigns />
                 </Layout>
               </PrivateRoute>
             }
