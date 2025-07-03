@@ -45,14 +45,29 @@ app = FastAPI(
 )
 
 # Set up CORS
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# Temporary fix - allow all origins to debug CORS issue
+logger.info("Setting up CORS with wildcard origins for debugging")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Original CORS setup (commented out for debugging)
+# if settings.BACKEND_CORS_ORIGINS:
+#     origins = [str(origin) for origin in settings.BACKEND_CORS_ORIGINS]
+#     logger.info(f"Setting up CORS with origins: {origins}")
+#     app.add_middleware(
+#         CORSMiddleware,
+#         allow_origins=origins,
+#         allow_credentials=True,
+#         allow_methods=["*"],
+#         allow_headers=["*"],
+#     )
+# else:
+#     logger.warning("No CORS origins configured!")
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)
