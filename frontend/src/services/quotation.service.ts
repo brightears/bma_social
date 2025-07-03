@@ -1,4 +1,4 @@
-import { authService } from './auth.service';
+import api from './api';
 
 export interface QuotationItem {
   description: string;
@@ -73,7 +73,7 @@ export interface SendQuotationRequest {
 }
 
 class QuotationService {
-  private baseUrl = `${import.meta.env.VITE_API_URL}/api/v1/quotations`;
+  private baseUrl = '/quotations';
 
   async getQuotations(params?: {
     skip?: number;
@@ -81,102 +81,55 @@ class QuotationService {
     status?: string;
     customer_id?: string;
   }): Promise<Quotation[]> {
-    const queryParams = new URLSearchParams();
-    if (params?.skip) queryParams.append('skip', params.skip.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.customer_id) queryParams.append('customer_id', params.customer_id);
-
-    const response = await fetch(`${this.baseUrl}?${queryParams}`, {
-      headers: authService.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch quotations');
-    }
-
-    return response.json();
+    const response = await api.get<Quotation[]>(this.baseUrl, { params });
+    return response.data;
   }
 
   async getQuotation(id: string): Promise<Quotation> {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
-      headers: authService.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch quotation');
-    }
-
-    return response.json();
+    const response = await api.get<Quotation>(`${this.baseUrl}/${id}`);
+    return response.data;
   }
 
   async createQuotation(data: QuotationCreate): Promise<Quotation> {
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: authService.getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to create quotation');
+    try {
+      const response = await api.post<Quotation>(this.baseUrl, data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Failed to create quotation');
     }
-
-    return response.json();
   }
 
   async updateQuotation(id: string, data: QuotationUpdate): Promise<Quotation> {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
-      method: 'PUT',
-      headers: authService.getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to update quotation');
+    try {
+      const response = await api.put<Quotation>(`${this.baseUrl}/${id}`, data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Failed to update quotation');
     }
-
-    return response.json();
   }
 
   async deleteQuotation(id: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
-      method: 'DELETE',
-      headers: authService.getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to delete quotation');
+    try {
+      await api.delete(`${this.baseUrl}/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Failed to delete quotation');
     }
   }
 
   async downloadPDF(id: string): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/${id}/pdf`, {
-      headers: authService.getAuthHeaders(),
+    const response = await api.get(`${this.baseUrl}/${id}/pdf`, {
+      responseType: 'blob',
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to download PDF');
-    }
-
-    return response.blob();
+    return response.data;
   }
 
   async sendQuotation(id: string, data: SendQuotationRequest): Promise<{ status: string; channel: string }> {
-    const response = await fetch(`${this.baseUrl}/${id}/send`, {
-      method: 'POST',
-      headers: authService.getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.detail || 'Failed to send quotation');
+    try {
+      const response = await api.post<{ status: string; channel: string }>(`${this.baseUrl}/${id}/send`, data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Failed to send quotation');
     }
-
-    return response.json();
   }
 }
 
