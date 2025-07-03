@@ -34,6 +34,7 @@ const AdminTools: React.FC = () => {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [quotationsCheck, setQuotationsCheck] = useState<any>(null);
+  const [apiRoutes, setApiRoutes] = useState<any>(null);
 
   const syncDatabase = async () => {
     try {
@@ -74,6 +75,16 @@ const AdminTools: React.FC = () => {
       setQuotationsCheck(response.data);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to check quotations table');
+    }
+  };
+
+  const checkApiRoutes = async () => {
+    try {
+      setError(null);
+      const response = await api.get('/admin/check-api-routes');
+      setApiRoutes(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to check API routes');
     }
   };
 
@@ -121,6 +132,12 @@ const AdminTools: React.FC = () => {
           >
             Check Quotations Table
           </Button>
+          <Button
+            variant="outlined"
+            onClick={checkApiRoutes}
+          >
+            Check API Routes
+          </Button>
         </Box>
       </Paper>
 
@@ -151,6 +168,31 @@ const AdminTools: React.FC = () => {
                 ))}
               </ul>
             </>
+          )}
+        </Paper>
+      )}
+
+      {apiRoutes && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>API Routes Check</Typography>
+          <Typography variant="body2">
+            Total routes: {apiRoutes.total_routes}
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>
+            Quotation routes found:
+          </Typography>
+          {apiRoutes.quotation_routes.length > 0 ? (
+            <ul>
+              {apiRoutes.quotation_routes.map((route: any, index: number) => (
+                <li key={index}>
+                  {route.methods.join(', ')} {route.path}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              No quotation routes found!
+            </Alert>
           )}
         </Paper>
       )}

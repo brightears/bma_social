@@ -18,6 +18,9 @@ from app.services.whatsapp_service import whatsapp_service
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Log when this module is imported
+logger.info("Quotations endpoint module loaded")
+
 
 class QuotationItem(BaseModel):
     description: str
@@ -104,6 +107,12 @@ class QuotationResponse(BaseModel):
 class SendQuotationRequest(BaseModel):
     channel: str = "whatsapp"  # whatsapp, line, email
     message: Optional[str] = None  # Optional custom message
+
+
+@router.get("/health")
+async def quotations_health_check():
+    """Health check endpoint for quotations module"""
+    return {"status": "ok", "module": "quotations"}
 
 
 @router.get("/", response_model=List[QuotationResponse])

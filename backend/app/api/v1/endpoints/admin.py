@@ -164,3 +164,35 @@ async def check_quotations_table(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to check quotations table: {str(e)}"
         )
+
+
+@router.get("/check-api-routes")
+async def check_api_routes(
+    current_user: User = Depends(get_current_superuser)
+):
+    """
+    Check all registered API routes
+    Only accessible by superusers
+    """
+    from app.main import app
+    
+    routes = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods) if route.methods else [],
+                "name": route.name if hasattr(route, 'name') else None
+            })
+    
+    # Sort routes by path
+    routes.sort(key=lambda x: x['path'])
+    
+    # Filter quotation routes
+    quotation_routes = [r for r in routes if 'quotation' in r['path'].lower()]
+    
+    return {
+        "total_routes": len(routes),
+        "quotation_routes": quotation_routes,
+        "all_routes": routes
+    }
