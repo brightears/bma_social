@@ -16,6 +16,7 @@ import {
 import {
   Sync as SyncIcon,
   Info as InfoIcon,
+  CheckCircle as CheckCircleIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -32,6 +33,7 @@ const AdminTools: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [loadingInfo, setLoadingInfo] = useState(false);
+  const [quotationsCheck, setQuotationsCheck] = useState<any>(null);
 
   const syncDatabase = async () => {
     try {
@@ -65,6 +67,16 @@ const AdminTools: React.FC = () => {
     }
   };
 
+  const checkQuotationsTable = async () => {
+    try {
+      setError(null);
+      const response = await api.get('/admin/check-quotations-table');
+      setQuotationsCheck(response.data);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to check quotations table');
+    }
+  };
+
   React.useEffect(() => {
     loadDatabaseInfo();
   }, []);
@@ -93,15 +105,55 @@ const AdminTools: React.FC = () => {
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           This will create any missing database tables. Use this after deploying new features that require database changes.
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={loading ? <CircularProgress size={20} /> : <SyncIcon />}
-          onClick={syncDatabase}
-          disabled={loading}
-        >
-          {loading ? 'Syncing...' : 'Sync Database'}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            startIcon={loading ? <CircularProgress size={20} /> : <SyncIcon />}
+            onClick={syncDatabase}
+            disabled={loading}
+          >
+            {loading ? 'Syncing...' : 'Sync Database'}
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<CheckCircleIcon />}
+            onClick={checkQuotationsTable}
+          >
+            Check Quotations Table
+          </Button>
+        </Box>
       </Paper>
+
+      {quotationsCheck && (
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>Quotations Table Check</Typography>
+          <Typography variant="body2">
+            Table exists: {quotationsCheck.table_exists ? 'Yes' : 'No'}
+          </Typography>
+          <Typography variant="body2">
+            Model imported: {quotationsCheck.model_imported ? 'Yes' : 'No'}
+          </Typography>
+          {quotationsCheck.model_error && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              Model error: {quotationsCheck.model_error}
+            </Alert>
+          )}
+          {quotationsCheck.columns.length > 0 && (
+            <>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Columns ({quotationsCheck.columns_count}):
+              </Typography>
+              <ul>
+                {quotationsCheck.columns.map((col: any) => (
+                  <li key={col.name}>
+                    {col.name} ({col.type})
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </Paper>
+      )}
 
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>

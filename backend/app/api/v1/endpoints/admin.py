@@ -36,10 +36,13 @@ async def sync_database(
         """))
         tables = [row[0] for row in result.fetchall()]
         
+        logger.info(f"Database sync completed. Tables: {tables}")
+        
         return {
             "status": "success",
             "message": "Database schema synchronized",
-            "tables": tables
+            "tables": tables,
+            "tables_count": len(tables)
         }
     except Exception as e:
         logger.error(f"Error syncing database: {e}")
@@ -93,4 +96,71 @@ async def get_database_info(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get database info: {str(e)}"
+        )
+
+
+@router.get("/check-quotations-table")
+async def check_quotations_table(
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Check if quotations table exists and get its structure
+    Only accessible by superusers
+    """
+    try:
+        # Check if quotations table exists
+        result = await db.execute(text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'quotations'
+            );
+        """))
+        table_exists = result.scalar()
+        
+        columns = []
+        if table_exists:
+            # Get column information
+            result = await db.execute(text("""
+                SELECT 
+                    column_name,
+                    data_type,
+                    is_nullable,
+                    column_default
+                FROM information_schema.columns
+                WHERE table_schema = 'public' 
+                AND table_name = 'quotations'
+                ORDER BY ordinal_position;
+            """))
+            
+            for row in result.fetchall():
+                columns.append({
+                    "name": row[0],
+                    "type": row[1],
+                    "nullable": row[2] == 'YES',
+                    "default": row[3]
+                })
+        
+        # Also check if we can import the model
+        try:
+            from app.models import Quotation
+            model_imported = True
+            model_error = None
+        except Exception as e:
+            model_imported = False
+            model_error = str(e)
+        
+        return {
+            "table_exists": table_exists,
+            "columns": columns,
+            "columns_count": len(columns),
+            "model_imported": model_imported,
+            "model_error": model_error
+        }
+    except Exception as e:
+        logger.error(f"Error checking quotations table: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to check quotations table: {str(e)}"
         )
