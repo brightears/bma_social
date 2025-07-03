@@ -10,7 +10,8 @@ from app.api.v1.endpoints import (
     webhooks,
     analytics,
     contacts,
-    quotations
+    quotations,
+    admin
 )
 
 api_router = APIRouter()
@@ -44,3 +45,6 @@ api_router.include_router(contacts.router, prefix="/contacts", tags=["contacts"]
 
 # Quotations
 api_router.include_router(quotations.router, prefix="/quotations", tags=["quotations"])
+
+# Admin
+api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
