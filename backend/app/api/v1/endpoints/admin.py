@@ -62,12 +62,17 @@ async def get_database_info(
         # Get list of tables with row counts
         result = await db.execute(text("""
             SELECT 
-                schemaname,
-                tablename,
-                pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
-                n_live_tup AS row_count
-            FROM pg_stat_user_tables
-            ORDER BY tablename;
+                t.table_schema,
+                t.table_name,
+                pg_size_pretty(pg_total_relation_size(t.table_schema||'.'||t.table_name)) AS size,
+                COALESCE(s.n_live_tup, 0) AS row_count
+            FROM information_schema.tables t
+            LEFT JOIN pg_stat_user_tables s 
+                ON t.table_schema = s.schemaname 
+                AND t.table_name = s.relname
+            WHERE t.table_schema = 'public' 
+                AND t.table_type = 'BASE TABLE'
+            ORDER BY t.table_name;
         """))
         
         tables = []
