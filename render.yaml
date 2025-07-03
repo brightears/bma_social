@@ -28,6 +28,22 @@ services:
           property: connectionString
       # Add other environment variables in Render dashboard
 
+  # Frontend - React App
+  - type: web
+    name: bma-social-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/build
+    region: singapore
+    plan: free
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://bma-social-api.onrender.com
+
   # Background Worker - Celery (Uncomment when needed)
   # - type: worker
   #   name: bma-social-worker
