@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
+from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class SendMessageRequest(BaseModel):
-    conversation_id: str
+    conversation_id: UUID
     content: str
     type: MessageType = MessageType.TEXT
     media_url: Optional[str] = None
@@ -28,8 +29,8 @@ class SendMessageRequest(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    id: str
-    conversation_id: str
+    id: UUID
+    conversation_id: UUID
     type: MessageType
     content: str
     media_url: Optional[str]
@@ -104,7 +105,7 @@ async def send_message(
         await db.commit()
         
         # Prepare response
-        response = MessageResponse.from_orm(message)
+        response = MessageResponse.model_validate(message)
         response.sender_name = current_user.full_name or current_user.username
         
         return response
@@ -168,7 +169,7 @@ async def send_whatsapp_message(customer: Customer, message: Message, request_da
 
 @router.get("/conversation/{conversation_id}", response_model=List[MessageResponse])
 async def get_conversation_messages(
-    conversation_id: str,
+    conversation_id: UUID,
     limit: int = 50,
     offset: int = 0,
     current_user: User = Depends(get_current_user),
@@ -205,7 +206,7 @@ async def get_conversation_messages(
     # Build response
     response = []
     for message in messages:
-        msg_response = MessageResponse.from_orm(message)
+        msg_response = MessageResponse.model_validate(message)
         if message.sender_user_id and message.sender_user_id in users:
             user = users[message.sender_user_id]
             msg_response.sender_name = user.full_name or user.username
@@ -231,7 +232,7 @@ async def get_conversation_messages(
 
 @router.post("/{message_id}/read")
 async def mark_message_read(
-    message_id: str,
+    message_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -262,7 +263,7 @@ async def mark_message_read(
 
 @router.delete("/{message_id}")
 async def delete_message(
-    message_id: str,
+    message_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
