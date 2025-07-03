@@ -6,7 +6,7 @@ import logging
 from app.models import User
 from app.models.base import Base
 from app.api.v1.dependencies import get_db, get_current_superuser
-from app.api.v1.dependencies.database import engine
+from app.api.v1.dependencies.database import get_engine
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -23,6 +23,7 @@ async def sync_database(
     """
     try:
         # Create all tables that don't exist
+        engine = get_engine()
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         
