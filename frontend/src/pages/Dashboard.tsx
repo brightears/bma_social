@@ -7,7 +7,7 @@ import {
   Typography,
   IconButton,
   List,
-  ListItem,
+  ListItemButton,
   ListItemText,
   ListItemAvatar,
   Avatar,
@@ -17,6 +17,7 @@ import {
   Paper,
   Button,
   CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -41,14 +42,26 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   useEffect(() => {
     loadConversations();
+    // Refresh conversations every 5 seconds
+    const interval = setInterval(() => {
+      loadConversations();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation.id);
+      // Refresh messages every 3 seconds when a conversation is selected
+      const interval = setInterval(() => {
+        loadMessages(selectedConversation.id);
+      }, 3000);
+      return () => clearInterval(interval);
     }
   }, [selectedConversation]);
 
@@ -64,11 +77,17 @@ const Dashboard: React.FC = () => {
   };
 
   const loadMessages = async (conversationId: string) => {
+    setLoadingMessages(true);
+    setMessageError(null);
     try {
       const data = await conversationService.getMessages(conversationId);
       setMessages(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load messages:', error);
+      setMessageError(error.response?.data?.detail || 'Failed to load messages');
+      setMessages([]);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -123,8 +142,7 @@ const Dashboard: React.FC = () => {
       ) : (
         <List>
           {conversations.map((conversation) => (
-            <ListItem
-              button
+            <ListItemButton
               key={conversation.id}
               selected={selectedConversation?.id === conversation.id}
               onClick={() => setSelectedConversation(conversation)}
@@ -147,7 +165,7 @@ const Dashboard: React.FC = () => {
               {conversation.unread_count > 0 && (
                 <Badge badgeContent={conversation.unread_count} color="primary" />
               )}
-            </ListItem>
+            </ListItemButton>
           ))}
         </List>
       )}
@@ -228,7 +246,29 @@ const Dashboard: React.FC = () => {
         {selectedConversation ? (
           <>
             <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
-              {messages.map((message) => (
+              {messageError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {messageError}
+                </Alert>
+              )}
+              {loadingMessages ? (
+                <Box display="flex" justifyContent="center" p={3}>
+                  <CircularProgress />
+                </Box>
+              ) : messages.length === 0 ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                    color: 'text.secondary'
+                  }}
+                >
+                  <Typography>No messages yet. Start a conversation!</Typography>
+                </Box>
+              ) : (
+                messages.map((message) => (
                 <Box
                   key={message.id}
                   sx={{
@@ -258,7 +298,8 @@ const Dashboard: React.FC = () => {
                     </Typography>
                   </Paper>
                 </Box>
-              ))}
+              ))
+              )}
             </Box>
             
             <Paper sx={{ p: 2, display: 'flex', gap: 1 }}>

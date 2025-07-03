@@ -187,7 +187,7 @@ async def get_conversation_messages(
     result = await db.execute(
         select(Message)
         .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.desc())
+        .order_by(Message.created_at.asc())
         .limit(limit)
         .offset(offset)
     )
