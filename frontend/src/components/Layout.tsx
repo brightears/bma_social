@@ -18,6 +18,7 @@ import {
   People as PeopleIcon,
   Campaign as CampaignIcon,
   Receipt as ReceiptIcon,
+  Settings as SettingsIcon,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -50,6 +51,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { text: 'Quotations', icon: <ReceiptIcon />, path: '/quotations' },
   ];
 
+  // Admin menu item (only show for admin users)
+  // For now, we'll show it to all users since we don't have user role info in frontend yet
+  const adminMenuItem = { text: 'Admin Tools', icon: <SettingsIcon />, path: '/admin' };
+
   const drawer = (
     <Box>
       <Toolbar>
@@ -69,6 +74,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <ListItemText primary={item.text} />
           </ListItemButton>
         ))}
+      </List>
+      <Divider />
+      <List>
+        <ListItemButton
+          selected={location.pathname.startsWith(adminMenuItem.path)}
+          onClick={() => navigate(adminMenuItem.path)}
+        >
+          <ListItemIcon>{adminMenuItem.icon}</ListItemIcon>
+          <ListItemText primary={adminMenuItem.text} />
+        </ListItemButton>
       </List>
       <Divider />
       <List>
@@ -102,7 +117,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            {menuItems.find((item) => item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path))?.text || 'BMA Social'}
+            {menuItems.find((item) => item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path))?.text || 
+             (location.pathname.startsWith(adminMenuItem.path) ? adminMenuItem.text : 'BMA Social')}
           </Typography>
         </Toolbar>
       </AppBar>

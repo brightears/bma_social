@@ -10,6 +10,7 @@ import Campaigns from './pages/Campaigns';
 import Quotations from './pages/Quotations';
 import QuotationForm from './pages/QuotationForm';
 import QuotationView from './pages/QuotationView';
+import AdminTools from './pages/AdminTools';
 import Layout from './components/Layout';
 import authService from './services/auth.service';
 
@@ -102,6 +103,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <QuotationForm />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <AdminTools />
                 </Layout>
               </PrivateRoute>
             }
