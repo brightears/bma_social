@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
-from uuid import UUID
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class SendMessageRequest(BaseModel):
-    conversation_id: UUID
+    conversation_id: str
     content: str
     type: MessageType = MessageType.TEXT
     media_url: Optional[str] = None
@@ -29,8 +28,8 @@ class SendMessageRequest(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    id: UUID
-    conversation_id: UUID
+    id: str
+    conversation_id: str
     type: MessageType
     content: str
     media_url: Optional[str]
@@ -41,6 +40,9 @@ class MessageResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        json_encoders = {
+            'UUID': lambda v: str(v)
+        }
 
 
 @router.post("/send", response_model=MessageResponse)
@@ -169,7 +171,7 @@ async def send_whatsapp_message(customer: Customer, message: Message, request_da
 
 @router.get("/conversation/{conversation_id}", response_model=List[MessageResponse])
 async def get_conversation_messages(
-    conversation_id: UUID,
+    conversation_id: str,
     limit: int = 50,
     offset: int = 0,
     current_user: User = Depends(get_current_user),
@@ -177,62 +179,83 @@ async def get_conversation_messages(
 ):
     """Get messages in a conversation"""
     
-    # Verify conversation exists
-    conv_result = await db.execute(
-        select(Conversation).where(Conversation.id == conversation_id)
-    )
-    if not conv_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Conversation not found")
-    
-    # Get messages with sender info
-    result = await db.execute(
-        select(Message)
-        .where(Message.conversation_id == conversation_id)
-        .order_by(Message.created_at.asc())
-        .limit(limit)
-        .offset(offset)
-    )
-    messages = result.scalars().all()
-    
-    # Get sender names
-    user_ids = [m.sender_user_id for m in messages if m.sender_user_id]
-    users = {}
-    if user_ids:
-        user_result = await db.execute(
-            select(User).where(User.id.in_(user_ids))
-        )
-        users = {u.id: u for u in user_result.scalars().all()}
-    
-    # Build response
-    response = []
-    for message in messages:
-        msg_response = MessageResponse.model_validate(message)
-        if message.sender_user_id and message.sender_user_id in users:
-            user = users[message.sender_user_id]
-            msg_response.sender_name = user.full_name or user.username
-        response.append(msg_response)
-    
-    # Mark messages as read
-    unread_messages = [m for m in messages if m.direction == MessageDirection.INBOUND and m.status != MessageStatus.READ]
-    if unread_messages:
-        for msg in unread_messages:
-            msg.status = MessageStatus.READ
+    try:
+        # Log the incoming conversation_id
+        logger.info(f"Getting messages for conversation: {conversation_id}")
         
-        # Update conversation unread count
+        # Verify conversation exists
         conv_result = await db.execute(
             select(Conversation).where(Conversation.id == conversation_id)
         )
-        conversation = conv_result.scalar_one()
-        conversation.unread_count = 0
-        
-        await db.commit()
+        if not conv_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Conversation not found")
+    except Exception as e:
+        logger.error(f"Error verifying conversation: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
-    return response
+    try:
+        # Get messages with sender info
+        result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conversation_id)
+            .order_by(Message.created_at.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        messages = result.scalars().all()
+        
+        # Get sender names
+        user_ids = [m.sender_user_id for m in messages if m.sender_user_id]
+        users = {}
+        if user_ids:
+            user_result = await db.execute(
+                select(User).where(User.id.in_(user_ids))
+            )
+            users = {u.id: u for u in user_result.scalars().all()}
+        
+        # Build response
+        response = []
+        for message in messages:
+            msg_data = {
+                "id": str(message.id),
+                "conversation_id": str(message.conversation_id),
+                "type": message.type,
+                "content": message.content,
+                "media_url": message.media_url,
+                "direction": message.direction,
+                "status": message.status,
+                "created_at": message.created_at,
+                "sender_name": None
+            }
+            if message.sender_user_id and message.sender_user_id in users:
+                user = users[message.sender_user_id]
+                msg_data["sender_name"] = user.full_name or user.username
+            response.append(MessageResponse(**msg_data))
+        
+        # Mark messages as read
+        unread_messages = [m for m in messages if m.direction == MessageDirection.INBOUND and m.status != MessageStatus.READ]
+        if unread_messages:
+            for msg in unread_messages:
+                msg.status = MessageStatus.READ
+            
+            # Update conversation unread count
+            conv_result = await db.execute(
+                select(Conversation).where(Conversation.id == conversation_id)
+            )
+            conversation = conv_result.scalar_one()
+            conversation.unread_count = 0
+            
+            await db.commit()
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error getting messages: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving messages: {str(e)}")
 
 
 @router.post("/{message_id}/read")
 async def mark_message_read(
-    message_id: UUID,
+    message_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -263,7 +286,7 @@ async def mark_message_read(
 
 @router.delete("/{message_id}")
 async def delete_message(
-    message_id: UUID,
+    message_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):

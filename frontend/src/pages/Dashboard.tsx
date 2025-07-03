@@ -47,21 +47,21 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadConversations();
-    // Refresh conversations every 5 seconds
-    const interval = setInterval(() => {
-      loadConversations();
-    }, 5000);
-    return () => clearInterval(interval);
+    // TODO: Re-enable auto-refresh after fixing 500 error
+    // const interval = setInterval(() => {
+    //   loadConversations();
+    // }, 5000);
+    // return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (selectedConversation) {
       loadMessages(selectedConversation.id);
-      // Refresh messages every 3 seconds when a conversation is selected
-      const interval = setInterval(() => {
-        loadMessages(selectedConversation.id);
-      }, 3000);
-      return () => clearInterval(interval);
+      // TODO: Re-enable auto-refresh after fixing 500 error
+      // const interval = setInterval(() => {
+      //   loadMessages(selectedConversation.id);
+      // }, 3000);
+      // return () => clearInterval(interval);
     }
   }, [selectedConversation]);
 
