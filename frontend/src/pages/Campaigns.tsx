@@ -76,7 +76,7 @@ const Campaigns: React.FC = () => {
 
   useEffect(() => {
     // Calculate recipients when filters change
-    if (formData.segment_filters.tags?.length > 0) {
+    if (formData.segment_filters.tags && formData.segment_filters.tags.length > 0) {
       calculateRecipients();
     } else {
       setRecipientCount(0);
@@ -108,8 +108,8 @@ const Campaigns: React.FC = () => {
     try {
       const contacts = await contactService.getContacts({ tag: null });
       const filtered = contacts.filter(contact => {
-        if (formData.segment_filters.tags?.length === 0) return true;
-        return formData.segment_filters.tags?.some(tag => contact.tags.includes(tag));
+        if (!formData.segment_filters.tags || formData.segment_filters.tags.length === 0) return true;
+        return formData.segment_filters.tags.some(tag => contact.tags.includes(tag));
       });
       setRecipientCount(filtered.length);
     } catch (error) {
