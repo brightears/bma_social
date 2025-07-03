@@ -8,7 +8,8 @@ from app.api.v1.endpoints import (
     campaigns,
     templates,
     webhooks,
-    analytics
+    analytics,
+    contacts
 )
 
 api_router = APIRouter()
@@ -36,3 +37,6 @@ api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"]
 
 # Analytics
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+
+# Contacts
+api_router.include_router(contacts.router, prefix="/contacts", tags=["contacts"])

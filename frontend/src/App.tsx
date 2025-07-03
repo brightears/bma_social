@@ -2,8 +2,11 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Typography } from '@mui/material';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import Conversations from './pages/Conversations';
+import Contacts from './pages/Contacts';
+import Layout from './components/Layout';
 import authService from './services/auth.service';
 
 const theme = createTheme({
@@ -33,7 +36,31 @@ function App() {
             path="/"
             element={
               <PrivateRoute>
-                <Dashboard />
+                <Layout>
+                  <Conversations />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/contacts"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Contacts />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/campaigns"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Typography variant="h4" sx={{ mb: 3 }}>
+                    Campaigns - Coming Soon
+                  </Typography>
+                </Layout>
               </PrivateRoute>
             }
           />
