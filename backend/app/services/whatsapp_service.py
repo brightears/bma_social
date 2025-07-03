@@ -262,6 +262,56 @@ class WhatsAppService:
             response.raise_for_status()
             return response.content
     
+    async def upload_media(self, file_data: bytes, file_type: str = "application/pdf") -> str:
+        """Upload media to WhatsApp and get media ID"""
+        url = f"{self.base_url}/media"
+        
+        files = {
+            'file': ('document.pdf', file_data, file_type),
+            'messaging_product': (None, 'whatsapp'),
+            'type': (None, 'application/pdf')
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                url,
+                files=files,
+                headers={'Authorization': f'Bearer {self.access_token}'}
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data.get("id")
+    
+    async def send_document_message(self, to_phone: str, document_url: str = None, document_id: str = None, 
+                                   filename: str = "document.pdf", caption: str = None) -> dict:
+        """Send a document message via WhatsApp"""
+        url = f"{self.base_url}/messages"
+        
+        message_data = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to_phone,
+            "type": "document",
+            "document": {
+                "filename": filename
+            }
+        }
+        
+        if document_id:
+            message_data["document"]["id"] = document_id
+        elif document_url:
+            message_data["document"]["link"] = document_url
+        else:
+            raise ValueError("Either document_url or document_id must be provided")
+        
+        if caption:
+            message_data["document"]["caption"] = caption
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(url, json=message_data, headers=self.headers)
+            response.raise_for_status()
+            return response.json()
+    
     @staticmethod
     def format_phone_number(phone: str) -> str:
         """

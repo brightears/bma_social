@@ -5,6 +5,7 @@ from .conversation import Conversation, ConversationStatus, ConversationChannel
 from .message import Message, MessageType, MessageDirection, MessageStatus
 from .campaign import Campaign, CampaignStatus, CampaignChannel
 from .template import Template, TemplateChannel, TemplateStatus
+from .quotation import Quotation, QuotationStatus, QuotationTemplate
 
 __all__ = [
     "Base",
@@ -24,5 +25,8 @@ __all__ = [
     "CampaignChannel",
     "Template",
     "TemplateChannel",
-    "TemplateStatus"
+    "TemplateStatus",
+    "Quotation",
+    "QuotationStatus",
+    "QuotationTemplate"
 ]
