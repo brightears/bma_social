@@ -53,7 +53,7 @@ const Contacts: React.FC = () => {
     phone: '',
     email: '',
     whatsapp_id: '',
-    line_id: '',
+    line_user_id: '',
     tags: [],
     notes: '',
   });
@@ -93,7 +93,7 @@ const Contacts: React.FC = () => {
         phone: contact.phone,
         email: contact.email || '',
         whatsapp_id: contact.whatsapp_id || '',
-        line_id: contact.line_id || '',
+        line_user_id: contact.line_user_id || '',
         tags: contact.tags,
         notes: contact.notes || '',
       });
@@ -104,7 +104,7 @@ const Contacts: React.FC = () => {
         phone: '',
         email: '',
         whatsapp_id: '',
-        line_id: '',
+        line_user_id: '',
         tags: [],
         notes: '',
       });
@@ -124,7 +124,7 @@ const Contacts: React.FC = () => {
         ...formData,
         email: formData.email?.trim() || undefined,
         whatsapp_id: formData.whatsapp_id?.trim() || undefined,
-        line_id: formData.line_id?.trim() || undefined,
+        line_user_id: formData.line_user_id?.trim() || undefined,
         notes: formData.notes?.trim() || undefined,
       };
 
@@ -412,8 +412,8 @@ const Contacts: React.FC = () => {
             />
             <TextField
               label="LINE ID"
-              value={formData.line_id}
-              onChange={(e) => setFormData({ ...formData, line_id: e.target.value })}
+              value={formData.line_user_id}
+              onChange={(e) => setFormData({ ...formData, line_user_id: e.target.value })}
               fullWidth
             />
             <Box>

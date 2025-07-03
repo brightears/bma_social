@@ -21,11 +21,11 @@ class ContactCreate(BaseModel):
     phone: str
     email: Optional[EmailStr] = None
     whatsapp_id: Optional[str] = None
-    line_id: Optional[str] = None
+    line_user_id: Optional[str] = None
     tags: List[str] = []
     notes: Optional[str] = None
     
-    @validator('email', 'whatsapp_id', 'line_id', 'notes', pre=True)
+    @validator('email', 'whatsapp_id', 'line_user_id', 'notes', pre=True)
     def empty_str_to_none(cls, v):
         if v == '':
             return None
@@ -37,11 +37,11 @@ class ContactUpdate(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     whatsapp_id: Optional[str] = None
-    line_id: Optional[str] = None
+    line_user_id: Optional[str] = None
     tags: Optional[List[str]] = None
     notes: Optional[str] = None
     
-    @validator('email', 'whatsapp_id', 'line_id', 'notes', 'name', 'phone', pre=True)
+    @validator('email', 'whatsapp_id', 'line_user_id', 'notes', 'name', 'phone', pre=True)
     def empty_str_to_none(cls, v):
         if v == '':
             return None
@@ -54,7 +54,7 @@ class ContactResponse(BaseModel):
     phone: str
     email: Optional[str]
     whatsapp_id: Optional[str]
-    line_id: Optional[str]
+    line_user_id: Optional[str]
     tags: List[str]
     notes: Optional[str]
     created_at: datetime
@@ -101,8 +101,8 @@ async def get_contacts(
     
     # Add tag filter
     if tag:
-        # Use PostgreSQL JSON operators
-        query = query.where(Customer.extra_data["tags"].astext.contains(tag))
+        # Use PostgreSQL JSON operators on the tags column
+        query = query.where(Customer.tags.contains([tag]))
     
     query = query.order_by(Customer.name).offset(skip).limit(limit)
     result = await db.execute(query)
@@ -117,8 +117,8 @@ async def get_contacts(
             "phone": contact.phone,
             "email": contact.email,
             "whatsapp_id": contact.whatsapp_id,
-            "line_id": contact.line_id,
-            "tags": contact.extra_data.get("tags", []) if contact.extra_data else [],
+            "line_id": contact.line_user_id,
+            "tags": contact.tags or [],
             "notes": contact.extra_data.get("notes") if contact.extra_data else None,
             "created_at": contact.created_at,
             "updated_at": contact.updated_at
@@ -163,9 +163,9 @@ async def create_contact(
             phone=contact.phone,
             email=email_value,
             whatsapp_id=contact.whatsapp_id or contact.phone,  # Default to phone
-            line_id=contact.line_id,
+            line_id=contact.line_user_id,
+            tags=contact.tags,
             extra_data={
-                "tags": contact.tags,
                 "notes": contact.notes,
                 "created_by": str(current_user.id)
             }
@@ -181,9 +181,9 @@ async def create_contact(
             phone=db_contact.phone,
             email=db_contact.email,
             whatsapp_id=db_contact.whatsapp_id,
-            line_id=db_contact.line_id,
-            tags=db_contact.extra_data.get("tags", []),
-            notes=db_contact.extra_data.get("notes"),
+            line_id=db_contact.line_user_id,
+            tags=db_contact.tags or [],
+            notes=db_contact.extra_data.get("notes") if db_contact.extra_data else None,
             created_at=db_contact.created_at,
             updated_at=db_contact.updated_at
         )
@@ -219,8 +219,8 @@ async def get_contact(
         phone=contact.phone,
         email=contact.email,
         whatsapp_id=contact.whatsapp_id,
-        line_id=contact.line_id,
-        tags=contact.extra_data.get("tags", []) if contact.extra_data else [],
+        line_id=contact.line_user_id,
+        tags=contact.tags or [],
         notes=contact.extra_data.get("notes") if contact.extra_data else None,
         created_at=contact.created_at,
         updated_at=contact.updated_at
@@ -253,15 +253,17 @@ async def update_contact(
         contact.email = contact_update.email
     if contact_update.whatsapp_id is not None:
         contact.whatsapp_id = contact_update.whatsapp_id
-    if contact_update.line_id is not None:
-        contact.line_id = contact_update.line_id
+    if contact_update.line_user_id is not None:
+        contact.line_user_id = contact_update.line_user_id
     
-    # Update extra data
+    # Update tags directly
+    if contact_update.tags is not None:
+        contact.tags = contact_update.tags
+    
+    # Update extra data for notes
     if not contact.extra_data:
         contact.extra_data = {}
     
-    if contact_update.tags is not None:
-        contact.extra_data["tags"] = contact_update.tags
     if contact_update.notes is not None:
         contact.extra_data["notes"] = contact_update.notes
     
@@ -276,9 +278,9 @@ async def update_contact(
         phone=contact.phone,
         email=contact.email,
         whatsapp_id=contact.whatsapp_id,
-        line_id=contact.line_id,
-        tags=contact.extra_data.get("tags", []),
-        notes=contact.extra_data.get("notes"),
+        line_id=contact.line_user_id,
+        tags=contact.tags or [],
+        notes=contact.extra_data.get("notes") if contact.extra_data else None,
         created_at=contact.created_at,
         updated_at=contact.updated_at
     )
@@ -319,8 +321,8 @@ async def get_contact_groups(
     
     tag_counts = {}
     for customer in customers:
-        if customer.extra_data and "tags" in customer.extra_data:
-            for tag in customer.extra_data["tags"]:
+        if customer.tags:
+            for tag in customer.tags:
                 if tag not in tag_counts:
                     tag_counts[tag] = 0
                 tag_counts[tag] += 1
@@ -388,9 +390,9 @@ async def import_contacts_csv(
                 phone=row['phone'],
                 email=row.get('email'),
                 whatsapp_id=row.get('whatsapp_id') or row['phone'],
-                line_id=row.get('line_id'),
+                line_user_id=row.get('line_user_id'),
+                tags=tags,
                 extra_data={
-                    "tags": tags,
                     "notes": row.get('notes'),
                     "created_by": str(current_user.id)
                 }
@@ -424,7 +426,7 @@ async def export_contacts_csv(
     
     # Filter by tag if provided
     if tag:
-        query = query.where(Customer.extra_data["tags"].astext.contains(tag))
+        query = query.where(Customer.tags.contains([tag]))
     
     result = await db.execute(query.order_by(Customer.name))
     contacts = result.scalars().all()
@@ -434,11 +436,11 @@ async def export_contacts_csv(
     writer = csv.writer(output)
     
     # Write header
-    writer.writerow(['name', 'phone', 'email', 'whatsapp_id', 'line_id', 'tags', 'notes'])
+    writer.writerow(['name', 'phone', 'email', 'whatsapp_id', 'line_user_id', 'tags', 'notes'])
     
     # Write contacts
     for contact in contacts:
-        tags = ','.join(contact.extra_data.get("tags", [])) if contact.extra_data else ""
+        tags = ','.join(contact.tags) if contact.tags else ""
         notes = contact.extra_data.get("notes", "") if contact.extra_data else ""
         
         writer.writerow([
@@ -446,7 +448,7 @@ async def export_contacts_csv(
             contact.phone,
             contact.email or "",
             contact.whatsapp_id or "",
-            contact.line_id or "",
+            contact.line_user_id or "",
             tags,
             notes
         ])

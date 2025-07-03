@@ -6,7 +6,7 @@ export interface Contact {
   phone: string;
   email?: string;
   whatsapp_id?: string;
-  line_id?: string;
+  line_user_id?: string;
   tags: string[];
   notes?: string;
   created_at: string;
@@ -18,7 +18,7 @@ export interface ContactCreate {
   phone: string;
   email?: string;
   whatsapp_id?: string;
-  line_id?: string;
+  line_user_id?: string;
   tags: string[];
   notes?: string;
 }
@@ -28,7 +28,7 @@ export interface ContactUpdate {
   phone?: string;
   email?: string;
   whatsapp_id?: string;
-  line_id?: string;
+  line_user_id?: string;
   tags?: string[];
   notes?: string;
 }
