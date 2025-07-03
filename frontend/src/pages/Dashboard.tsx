@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Drawer,
@@ -44,31 +44,46 @@ const Dashboard: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
 
   useEffect(() => {
     loadConversations();
-    // TODO: Re-enable auto-refresh after fixing 500 error
-    // const interval = setInterval(() => {
-    //   loadConversations();
-    // }, 5000);
-    // return () => clearInterval(interval);
+    // Re-enable auto-refresh
+    const interval = setInterval(() => {
+      loadConversations();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
     if (selectedConversation) {
+      setIsFirstLoad(true);
       loadMessages(selectedConversation.id);
-      // TODO: Re-enable auto-refresh after fixing 500 error
-      // const interval = setInterval(() => {
-      //   loadMessages(selectedConversation.id);
-      // }, 3000);
-      // return () => clearInterval(interval);
+      // Re-enable auto-refresh with smart loading
+      const interval = setInterval(() => {
+        loadMessagesSmartly(selectedConversation.id);
+      }, 3000);
+      return () => clearInterval(interval);
     }
   }, [selectedConversation]);
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new messages arrive (only on first load)
+    if (messages.length > 0 && isFirstLoad) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setIsFirstLoad(false);
+    }
+  }, [messages, isFirstLoad]);
 
   const loadConversations = async () => {
     try {
       const data = await conversationService.getConversations();
-      setConversations(data);
+      // Only update if there are actual changes
+      if (JSON.stringify(data) !== JSON.stringify(conversations)) {
+        setConversations(data);
+      }
       setLoading(false);
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -88,6 +103,33 @@ const Dashboard: React.FC = () => {
       setMessages([]);
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const loadMessagesSmartly = async (conversationId: string) => {
+    // Save current scroll position
+    const container = messagesContainerRef.current;
+    const scrollPosition = container ? container.scrollHeight - container.scrollTop : 0;
+    
+    try {
+      const data = await conversationService.getMessages(conversationId);
+      
+      // Only update if there are new messages
+      if (data.length !== messages.length || 
+          (data.length > 0 && messages.length > 0 && 
+           data[data.length - 1].id !== messages[messages.length - 1].id)) {
+        setMessages(data);
+        
+        // Restore scroll position after DOM update
+        setTimeout(() => {
+          if (container && scrollPosition > 0) {
+            container.scrollTop = container.scrollHeight - scrollPosition;
+          }
+        }, 0);
+      }
+    } catch (error) {
+      // Silently fail on refresh errors to avoid spam
+      console.error('Failed to refresh messages:', error);
     }
   };
 
@@ -245,7 +287,10 @@ const Dashboard: React.FC = () => {
         
         {selectedConversation ? (
           <>
-            <Box sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}>
+            <Box 
+              ref={messagesContainerRef}
+              sx={{ flexGrow: 1, overflow: 'auto', mb: 2 }}
+            >
               {messageError && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {messageError}
@@ -300,6 +345,7 @@ const Dashboard: React.FC = () => {
                 </Box>
               ))
               )}
+              <div ref={messagesEndRef} />
             </Box>
             
             <Paper sx={{ p: 2, display: 'flex', gap: 1 }}>
