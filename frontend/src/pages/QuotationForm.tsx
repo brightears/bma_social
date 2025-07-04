@@ -18,16 +18,23 @@ import {
   CircularProgress,
   Divider,
   MenuItem,
+  FormControl,
+  InputLabel,
+  Select,
+  SelectChangeEvent,
+  Chip,
 } from '@mui/material';
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
+  ContentCopy as CopyIcon,
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import quotationService, { QuotationCreate, QuotationItem, Quotation } from '../services/quotation.service';
 import contactService, { Contact } from '../services/contact.service';
+import { quotationTemplates, predefinedItems, QuotationTemplate } from '../data/quotationTemplates';
 
 const QuotationForm: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +68,9 @@ const QuotationForm: React.FC = () => {
     quantity: 1,
     unit_price: 0,
   });
+
+  const [selectedTemplate, setSelectedTemplate] = useState<QuotationTemplate | null>(null);
+  const [itemCategory, setItemCategory] = useState<'custom' | 'subscriptions' | 'hardware' | 'services'>('custom');
 
   useEffect(() => {
     loadContacts();
@@ -106,6 +116,9 @@ const QuotationForm: React.FC = () => {
         validity_days: quotation.validity_days,
         notes: quotation.notes || '',
       });
+      
+      // Don't auto-select template when editing
+      setSelectedTemplate(null);
     } catch (err: any) {
       setError(err.message || 'Failed to load quotation');
     } finally {
@@ -120,6 +133,38 @@ const QuotationForm: React.FC = () => {
         ...prev,
         customer_id: contact.id,
       }));
+    }
+  };
+
+  const handleTemplateChange = (template: QuotationTemplate | null) => {
+    setSelectedTemplate(template);
+    if (template) {
+      // Apply template data to form
+      setFormData(prev => ({
+        ...prev,
+        title: template.title,
+        description: template.description,
+        items: template.items.map(item => ({
+          ...item,
+          total: item.quantity * item.unit_price,
+        })),
+        notes: template.notes || prev.notes,
+      }));
+    }
+  };
+
+  const handleItemCategoryChange = (event: SelectChangeEvent) => {
+    setItemCategory(event.target.value as any);
+    setNewItem({ description: '', quantity: 1, unit_price: 0 });
+  };
+
+  const handlePredefinedItemSelect = (item: { description: string; unit_price: number } | null) => {
+    if (item) {
+      setNewItem({
+        description: item.description,
+        quantity: 1,
+        unit_price: item.unit_price,
+      });
     }
   };
 
@@ -187,8 +232,6 @@ const QuotationForm: React.FC = () => {
     }
   };
 
-  const totals = calculateTotals();
-
   const formatCurrency = (amount: number) => {
     const currency = formData.currency || 'THB';
     return new Intl.NumberFormat(currency === 'THB' ? 'th-TH' : 'en-US', {
@@ -196,6 +239,8 @@ const QuotationForm: React.FC = () => {
       currency: currency,
     }).format(amount);
   };
+
+  const totals = calculateTotals();
 
   if (loading) {
     return (
@@ -271,6 +316,32 @@ const QuotationForm: React.FC = () => {
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Quotation Details</Typography>
               <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Autocomplete
+                    options={quotationTemplates}
+                    getOptionLabel={(option) => option.name}
+                    value={selectedTemplate}
+                    onChange={(_, value) => handleTemplateChange(value)}
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="Select Quotation Template (Optional)" 
+                        helperText="Choose a template to auto-fill quotation details"
+                      />
+                    )}
+                    renderOption={(props, option) => (
+                      <Box component="li" {...props}>
+                        <CopyIcon sx={{ mr: 1, color: 'action.active' }} />
+                        {option.name}
+                      </Box>
+                    )}
+                  />
+                  {selectedTemplate && (
+                    <Alert severity="info" sx={{ mt: 1 }} onClose={() => setSelectedTemplate(null)}>
+                      Template applied: {selectedTemplate.name}
+                    </Alert>
+                  )}
+                </Grid>
                 <Grid item xs={12} md={8}>
                   <TextField
                     fullWidth
@@ -309,29 +380,77 @@ const QuotationForm: React.FC = () => {
           {/* Items */}
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Items</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">Items</Typography>
+                {formData.items.length > 0 && (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => setFormData(prev => ({ ...prev, items: [] }))}
+                  >
+                    Clear All Items
+                  </Button>
+                )}
+              </Box>
               
               <Box sx={{ mb: 2 }}>
                 <Grid container spacing={2} alignItems="flex-end">
-                  <Grid item xs={12} md={6}>
-                    <TextField
-                      fullWidth
-                      label="Description"
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                    />
+                  <Grid item xs={12} md={3}>
+                    <FormControl fullWidth>
+                      <InputLabel>Item Category</InputLabel>
+                      <Select
+                        value={itemCategory}
+                        onChange={handleItemCategoryChange}
+                        label="Item Category"
+                      >
+                        <MenuItem value="custom">Custom Item</MenuItem>
+                        <MenuItem value="subscriptions">Subscriptions</MenuItem>
+                        <MenuItem value="hardware">Hardware</MenuItem>
+                        <MenuItem value="services">Services</MenuItem>
+                      </Select>
+                    </FormControl>
                   </Grid>
-                  <Grid item xs={6} md={2}>
+                  <Grid item xs={12} md={5}>
+                    {itemCategory === 'custom' ? (
+                      <TextField
+                        fullWidth
+                        label="Description"
+                        value={newItem.description}
+                        onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                      />
+                    ) : (
+                      <Autocomplete
+                        options={predefinedItems[itemCategory] || []}
+                        getOptionLabel={(option) => option.description}
+                        value={predefinedItems[itemCategory]?.find(item => item.description === newItem.description) || null}
+                        onChange={(_, value) => handlePredefinedItemSelect(value)}
+                        renderInput={(params) => (
+                          <TextField {...params} label="Select Item" />
+                        )}
+                        renderOption={(props, option) => (
+                          <Box component="li" {...props}>
+                            <Box sx={{ width: '100%' }}>
+                              <Typography variant="body2">{option.description}</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatCurrency(option.unit_price)} per unit
+                              </Typography>
+                            </Box>
+                          </Box>
+                        )}
+                      />
+                    )}
+                  </Grid>
+                  <Grid item xs={4} md={1}>
                     <TextField
                       fullWidth
-                      label="Quantity"
+                      label="Qty"
                       type="number"
                       value={newItem.quantity}
                       onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
                       inputProps={{ min: 1 }}
                     />
                   </Grid>
-                  <Grid item xs={6} md={2}>
+                  <Grid item xs={4} md={2}>
                     <TextField
                       fullWidth
                       label="Unit Price"
@@ -339,16 +458,17 @@ const QuotationForm: React.FC = () => {
                       value={newItem.unit_price}
                       onChange={(e) => setNewItem({ ...newItem, unit_price: parseFloat(e.target.value) || 0 })}
                       inputProps={{ min: 0, step: 0.01 }}
+                      disabled={itemCategory !== 'custom'}
                     />
                   </Grid>
-                  <Grid item xs={12} md={2}>
+                  <Grid item xs={4} md={1}>
                     <Button
                       fullWidth
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={handleAddItem}
                     >
-                      Add Item
+                      Add
                     </Button>
                   </Grid>
                 </Grid>
