@@ -48,6 +48,16 @@ app = FastAPI(
     redirect_slashes=False
 )
 
+# Custom middleware to ensure CORS headers are always present
+@app.middleware("http")
+async def ensure_cors_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
 # Set up CORS
 # Temporary fix - allow all origins to debug CORS issue
 logger.info("Setting up CORS with wildcard origins for debugging")

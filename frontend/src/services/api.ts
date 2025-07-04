@@ -28,7 +28,11 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    // Check if this is a CORS error
+    if (!error.response && error.message === 'Network Error') {
+      console.error('CORS error detected:', error);
+      // Don't redirect on CORS errors, let the calling code handle it
+    } else if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
       window.location.href = '/login';
