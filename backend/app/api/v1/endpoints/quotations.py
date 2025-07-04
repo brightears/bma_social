@@ -115,6 +115,7 @@ async def quotations_health_check():
     return {"status": "ok", "module": "quotations"}
 
 
+@router.get("", response_model=List[QuotationResponse])
 @router.get("/", response_model=List[QuotationResponse])
 async def get_quotations(
     skip: int = 0,
@@ -197,6 +198,7 @@ async def get_quotations(
     return response
 
 
+@router.post("", response_model=QuotationResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=QuotationResponse, status_code=status.HTTP_201_CREATED)
 async def create_quotation(
     quotation: QuotationCreate,

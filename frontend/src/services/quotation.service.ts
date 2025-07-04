@@ -81,7 +81,7 @@ class QuotationService {
     status?: string;
     customer_id?: string;
   }): Promise<Quotation[]> {
-    const response = await api.get<Quotation[]>(this.baseUrl, { params });
+    const response = await api.get<Quotation[]>(`${this.baseUrl}/`, { params });
     return response.data;
   }
 
@@ -92,7 +92,7 @@ class QuotationService {
 
   async createQuotation(data: QuotationCreate): Promise<Quotation> {
     try {
-      const response = await api.post<Quotation>(this.baseUrl, data);
+      const response = await api.post<Quotation>(`${this.baseUrl}/`, data);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.detail || 'Failed to create quotation');
