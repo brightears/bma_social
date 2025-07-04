@@ -15,6 +15,7 @@ export interface QuotationCreate {
   title: string;
   description?: string;
   items: QuotationItem[];
+  currency?: string;
   discount_percent?: number;
   tax_percent?: number;
   payment_terms?: string;
@@ -49,6 +50,7 @@ export interface Quotation {
   title: string;
   description?: string;
   items: QuotationItem[];
+  currency: string;
   subtotal: number;
   discount_percent: number;
   discount_amount: number;

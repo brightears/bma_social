@@ -144,10 +144,10 @@ const Quotations: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
+  const formatCurrency = (amount: number, currency: string = 'THB') => {
+    return new Intl.NumberFormat(currency === 'THB' ? 'th-TH' : 'en-US', {
       style: 'currency',
-      currency: 'THB',
+      currency: currency,
     }).format(amount);
   };
 
@@ -201,7 +201,7 @@ const Quotations: React.FC = () => {
                     </Box>
                   </TableCell>
                   <TableCell>{quotation.title}</TableCell>
-                  <TableCell align="right">{formatCurrency(quotation.total_amount)}</TableCell>
+                  <TableCell align="right">{formatCurrency(quotation.total_amount, quotation.currency)}</TableCell>
                   <TableCell>
                     <Chip
                       label={quotation.status.toUpperCase()}

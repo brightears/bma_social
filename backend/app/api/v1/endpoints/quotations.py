@@ -43,11 +43,18 @@ class QuotationCreate(BaseModel):
     title: str
     description: Optional[str] = None
     items: List[QuotationItem]
+    currency: str = "THB"  # THB or USD
     discount_percent: float = 0
     tax_percent: float = 7
     payment_terms: str = "50% deposit, 50% on completion"
     validity_days: int = 30
     notes: Optional[str] = None
+    
+    @validator('currency')
+    def validate_currency(cls, v):
+        if v not in ['THB', 'USD']:
+            raise ValueError('Currency must be THB or USD')
+        return v
     
     @validator('discount_percent', 'tax_percent')
     def validate_percentages(cls, v):
@@ -83,6 +90,7 @@ class QuotationResponse(BaseModel):
     title: str
     description: Optional[str]
     items: List[Dict[str, Any]]
+    currency: str
     subtotal: float
     discount_percent: float
     discount_amount: float
@@ -177,6 +185,7 @@ async def get_quotations(
             title=quotation.title,
             description=quotation.description,
             items=quotation.items or [],
+            currency=quotation.currency,
             subtotal=float(quotation.subtotal),
             discount_percent=float(quotation.discount_percent),
             discount_amount=float(quotation.discount_amount),
@@ -235,6 +244,7 @@ async def create_quotation(
             title=quotation.title,
             description=quotation.description,
             items=[item.dict() for item in quotation.items],
+            currency=quotation.currency,
             subtotal=Decimal(str(subtotal)),
             discount_percent=Decimal(str(quotation.discount_percent)),
             discount_amount=Decimal(str(discount_amount)),
@@ -270,6 +280,7 @@ async def create_quotation(
             title=db_quotation.title,
             description=db_quotation.description,
             items=db_quotation.items,
+            currency=db_quotation.currency,
             subtotal=float(db_quotation.subtotal),
             discount_percent=float(db_quotation.discount_percent),
             discount_amount=float(db_quotation.discount_amount),
@@ -388,6 +399,7 @@ async def get_quotation_pdf(
         'company_address': quotation.company_address,
         'company_tax_id': quotation.company_tax_id,
         'items': quotation.items,
+        'currency': quotation.currency,
         'subtotal': float(quotation.subtotal),
         'discount_percent': float(quotation.discount_percent),
         'discount_amount': float(quotation.discount_amount),
@@ -448,6 +460,7 @@ async def send_quotation(
         'company_address': quotation.company_address,
         'company_tax_id': quotation.company_tax_id,
         'items': quotation.items,
+        'currency': quotation.currency,
         'subtotal': float(quotation.subtotal),
         'discount_percent': float(quotation.discount_percent),
         'discount_amount': float(quotation.discount_amount),
@@ -469,7 +482,8 @@ async def send_quotation(
         media_id = await whatsapp_service.upload_media(pdf_bytes)
         
         # Prepare message
-        default_message = f"Hello {customer.name},\n\nPlease find attached your quotation {quotation.quote_number} for {quotation.title}.\n\nTotal Amount: ฿{quotation.total_amount:,.2f}\n\nThis quotation is valid for {quotation.validity_days} days."
+        currency_symbol = "฿" if quotation.currency == "THB" else "$"
+        default_message = f"Hello {customer.name},\n\nPlease find attached your quotation {quotation.quote_number} for {quotation.title}.\n\nTotal Amount: {currency_symbol}{quotation.total_amount:,.2f} {quotation.currency}\n\nThis quotation is valid for {quotation.validity_days} days."
         message = send_request.message or default_message
         
         # Send document - format phone number if needed

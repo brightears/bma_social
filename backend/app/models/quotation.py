@@ -35,7 +35,8 @@ class Quotation(BaseModel):
     items = Column(JSON, default=list)
     # Format: [{"description": "Service", "quantity": 1, "unit_price": 1000, "total": 1000}]
     
-    # Totals
+    # Currency and Totals
+    currency = Column(String(3), default="THB", nullable=False)  # THB or USD
     subtotal = Column(Numeric(12, 2), default=0)
     discount_percent = Column(Numeric(5, 2), default=0)
     discount_amount = Column(Numeric(12, 2), default=0)

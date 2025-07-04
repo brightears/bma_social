@@ -86,10 +86,10 @@ const QuotationView: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
+  const formatCurrency = (amount: number, currency: string = 'THB') => {
+    return new Intl.NumberFormat(currency === 'THB' ? 'th-TH' : 'en-US', {
       style: 'currency',
-      currency: 'THB',
+      currency: currency,
     }).format(amount);
   };
 
@@ -252,8 +252,8 @@ const QuotationView: React.FC = () => {
                     <TableRow key={index}>
                       <TableCell>{item.description}</TableCell>
                       <TableCell align="right" sx={{ width: 100 }}>{item.quantity}</TableCell>
-                      <TableCell align="right" sx={{ width: 150 }}>{formatCurrency(item.unit_price)}</TableCell>
-                      <TableCell align="right" sx={{ width: 150 }}>{formatCurrency(item.total)}</TableCell>
+                      <TableCell align="right" sx={{ width: 150 }}>{formatCurrency(item.unit_price, quotation.currency)}</TableCell>
+                      <TableCell align="right" sx={{ width: 150 }}>{formatCurrency(item.total, quotation.currency)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -274,17 +274,17 @@ const QuotationView: React.FC = () => {
                 </Grid>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ textAlign: 'right' }}>
-                    <Typography variant="body2">Subtotal: {formatCurrency(quotation.subtotal)}</Typography>
+                    <Typography variant="body2">Subtotal: {formatCurrency(quotation.subtotal, quotation.currency)}</Typography>
                     {quotation.discount_amount > 0 && (
                       <Typography variant="body2" color="error">
-                        Discount ({quotation.discount_percent}%): -{formatCurrency(quotation.discount_amount)}
+                        Discount ({quotation.discount_percent}%): -{formatCurrency(quotation.discount_amount, quotation.currency)}
                       </Typography>
                     )}
                     <Typography variant="body2">
-                      Tax ({quotation.tax_percent}%): {formatCurrency(quotation.tax_amount)}
+                      Tax ({quotation.tax_percent}%): {formatCurrency(quotation.tax_amount, quotation.currency)}
                     </Typography>
                     <Divider sx={{ my: 1 }} />
-                    <Typography variant="h5">Total: {formatCurrency(quotation.total_amount)}</Typography>
+                    <Typography variant="h5">Total: {formatCurrency(quotation.total_amount, quotation.currency)}</Typography>
                   </Box>
                 </Grid>
               </Grid>

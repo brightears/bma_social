@@ -17,6 +17,7 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  MenuItem,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,6 +48,7 @@ const QuotationForm: React.FC = () => {
     title: '',
     description: '',
     items: [] as QuotationItem[],
+    currency: 'THB',
     discount_percent: 0,
     tax_percent: 7,
     payment_terms: '50% deposit, 50% on completion',
@@ -97,6 +99,7 @@ const QuotationForm: React.FC = () => {
         title: quotation.title,
         description: quotation.description || '',
         items: quotation.items,
+        currency: quotation.currency || 'THB',
         discount_percent: quotation.discount_percent,
         tax_percent: quotation.tax_percent,
         payment_terms: quotation.payment_terms,
@@ -187,9 +190,10 @@ const QuotationForm: React.FC = () => {
   const totals = calculateTotals();
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('th-TH', {
+    const currency = formData.currency || 'THB';
+    return new Intl.NumberFormat(currency === 'THB' ? 'th-TH' : 'en-US', {
       style: 'currency',
-      currency: 'THB',
+      currency: currency,
     }).format(amount);
   };
 
@@ -267,7 +271,7 @@ const QuotationForm: React.FC = () => {
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" sx={{ mb: 2 }}>Quotation Details</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid item xs={12} md={8}>
                   <TextField
                     fullWidth
                     label="Title"
@@ -275,6 +279,18 @@ const QuotationForm: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
                   />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    fullWidth
+                    label="Currency"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  >
+                    <MenuItem value="THB">THB (฿)</MenuItem>
+                    <MenuItem value="USD">USD ($)</MenuItem>
+                  </TextField>
                 </Grid>
                 <Grid item xs={12}>
                   <TextField

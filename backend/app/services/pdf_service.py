@@ -90,7 +90,7 @@ class PDFService:
         elements.append(Spacer(1, 20))
         
         # Add items table
-        elements.append(self._create_items_table(quotation_data.get('items', [])))
+        elements.append(self._create_items_table(quotation_data))
         elements.append(Spacer(1, 20))
         
         # Add totals
@@ -183,21 +183,25 @@ class PDFService:
         
         return table
     
-    def _create_items_table(self, items: List[Dict[str, Any]]) -> Table:
+    def _create_items_table(self, data: Dict[str, Any]) -> Table:
         """Create items table"""
+        # Get currency symbol
+        currency = data.get('currency', 'THB')
+        currency_symbol = '฿' if currency == 'THB' else '$'
+        
         # Table headers
         headers = ['#', 'Description', 'Qty', 'Unit Price', 'Total']
         
         # Prepare table data
         table_data = [headers]
         
-        for idx, item in enumerate(items, 1):
+        for idx, item in enumerate(data.get('items', []), 1):
             row = [
                 str(idx),
                 item['description'],
                 str(item['quantity']),
-                f"฿{item['unit_price']:,.2f}",
-                f"฿{item['total']:,.2f}"
+                f"{currency_symbol}{item['unit_price']:,.2f}",
+                f"{currency_symbol}{item['total']:,.2f}"
             ]
             table_data.append(row)
         
@@ -232,17 +236,21 @@ class PDFService:
     
     def _create_totals_table(self, data: Dict[str, Any]) -> Table:
         """Create totals section"""
+        # Get currency symbol
+        currency = data.get('currency', 'THB')
+        currency_symbol = '฿' if currency == 'THB' else '$'
+        
         totals_data = [
-            ['Subtotal:', f"฿{data['subtotal']:,.2f}"],
+            ['Subtotal:', f"{currency_symbol}{data['subtotal']:,.2f}"],
         ]
         
         if data.get('discount_amount', 0) > 0:
-            totals_data.append([f"Discount ({data['discount_percent']}%):", f"-฿{data['discount_amount']:,.2f}"])
+            totals_data.append([f"Discount ({data['discount_percent']}%):", f"-{currency_symbol}{data['discount_amount']:,.2f}"])
         
         if data.get('tax_amount', 0) > 0:
-            totals_data.append([f"VAT ({data['tax_percent']}%):", f"฿{data['tax_amount']:,.2f}"])
+            totals_data.append([f"VAT ({data['tax_percent']}%):", f"{currency_symbol}{data['tax_amount']:,.2f}"])
         
-        totals_data.append(['Total:', f"฿{data['total_amount']:,.2f}"])
+        totals_data.append(['Total:', f"{currency_symbol}{data['total_amount']:,.2f} {currency}"])
         
         table = Table(totals_data, colWidths=[400, 100])
         table.setStyle(TableStyle([
