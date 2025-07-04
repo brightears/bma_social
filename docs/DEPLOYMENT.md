@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying BMA Social to Render with PostgreSQL and Redis.
+This guide covers deploying BMA Social to Render with PostgreSQL and Redis. Last updated: January 4, 2025.
 
 ## Prerequisites
 
@@ -10,10 +10,12 @@ This guide covers deploying BMA Social to Render with PostgreSQL and Redis.
 
 ## Services Required
 
-1. **Web Service** - FastAPI backend
-2. **PostgreSQL** - Primary database  
-3. **Redis** - Cache and message queue
-4. **Background Worker** - Celery tasks (optional)
+1. **Backend Web Service** - FastAPI backend API
+2. **Frontend Web Service** - React TypeScript application
+3. **PostgreSQL** - Primary database  
+4. **Redis** - Cache and message queue (optional, for future features)
+5. **Webhook Router** - Separate service for WhatsApp webhook forwarding
+6. **Background Worker** - Celery tasks (optional, for scheduled campaigns)
 
 ## Step-by-Step Deployment
 
@@ -43,7 +45,24 @@ This guide covers deploying BMA Social to Render with PostgreSQL and Redis.
 
 ### 2. Web Service Configuration
 
-1. Create `render.yaml` in project root:
+#### Backend Service
+
+1. Create a new Web Service on Render:
+   - Name: `bma-social-api`
+   - Environment: Python 3
+   - Build Command: `cd backend && pip install -r requirements.txt`
+   - Start Command: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+#### Frontend Service
+
+2. Create another Web Service for frontend:
+   - Name: `bma-social-frontend`
+   - Environment: Node
+   - Build Command: `cd frontend && npm install && npm run build`
+   - Start Command: `cd frontend && npm run start`
+   - Publish Directory: `frontend/build`
+
+3. Create `render.yaml` in project root:
 
 ```yaml
 services:
@@ -135,7 +154,15 @@ CRM_API_URL=https://bmasia-crm.onrender.com/api
 CRM_API_KEY=your-api-key
 
 # CORS Origins
-BACKEND_CORS_ORIGINS=["https://bma-social.onrender.com"]
+BACKEND_CORS_ORIGINS=["https://bma-social-frontend.onrender.com", "http://localhost:3000"]
+
+# Frontend URL (for email links, etc)
+FRONTEND_URL=https://bma-social-frontend.onrender.com
+
+# JWT Settings
+SECRET_KEY=your-secret-key-here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
 ### 4. Database Migrations
@@ -162,17 +189,69 @@ alembic upgrade head
 ### 6. Monitoring Setup
 
 1. Enable Render's built-in monitoring
-2. Set up health check endpoint: `/health`
+2. Health check endpoints:
+   - Backend: `https://bma-social-api.onrender.com/health`
+   - Frontend: `https://bma-social-frontend.onrender.com`
 3. Configure alerts for downtime
+4. Monitor key metrics:
+   - Response time
+   - Error rate
+   - Database connections
+   - Memory usage
 
 ## Post-Deployment
 
-### 1. Webhook Configuration
+### 1. Initial Setup
 
-Update WhatsApp webhook URL:
-1. Go to Meta for Developers
-2. Update webhook URL to: `https://your-domain/api/v1/webhooks/whatsapp`
-3. Verify with token from environment
+1. **Create Admin User**:
+   ```bash
+   # SSH into backend service
+   render ssh bma-social-api
+   
+   # Run Python shell
+   cd backend
+   python
+   
+   # Create admin user
+   from app.core.security import get_password_hash
+   from app.models.user import User
+   from app.core.database import SessionLocal
+   
+   db = SessionLocal()
+   admin = User(
+       username="admin",
+       email="admin@bma.com",
+       hashed_password=get_password_hash("your-secure-password"),
+       full_name="System Admin",
+       role="admin",
+       is_active=True
+   )
+   db.add(admin)
+   db.commit()
+   ```
+
+2. **Configure Frontend Environment**:
+   - Update `frontend/.env.production` with correct API URL
+   - Ensure REACT_APP_API_URL points to backend
+
+### 2. Webhook Configuration
+
+#### WhatsApp Setup
+1. Deploy webhook router service separately
+2. Configure router to forward to BMA Social API
+3. Update Meta for Developers:
+   - Webhook URL: `https://your-webhook-router/webhooks/whatsapp`
+   - Verify Token: Match with environment variable
+   - Subscribe to: messages, message_status
+
+#### Webhook Router Configuration
+```javascript
+// webhook-router configuration
+const endpoints = [
+  'https://bma-social-api.onrender.com/api/v1/webhooks/whatsapp',
+  'https://other-service/webhook'  // If needed
+];
+```
 
 ### 2. Database Backups
 
@@ -180,12 +259,59 @@ Enable automatic backups in Render:
 - Database > Settings > Backups
 - Set retention period (7 days recommended)
 
-### 3. Scaling
+### 3. Database Management
+
+1. **Regular Backups**:
+   - Enable automatic daily backups
+   - Set retention to 7-30 days
+   - Test restore procedure monthly
+
+2. **Maintenance**:
+   ```sql
+   -- Run periodically
+   VACUUM ANALYZE;
+   REINDEX DATABASE "bma-social-db";
+   ```
+
+3. **Monitoring**:
+   - Track slow queries
+   - Monitor connection pool usage
+   - Watch for table bloat
+
+### 4. Scaling
 
 When ready to scale:
-- Upgrade web service plan for more resources
-- Enable auto-scaling in Settings
-- Add more background workers as needed
+
+1. **Vertical Scaling**:
+   - Upgrade Render plan (Starter → Standard → Pro)
+   - Increase database resources
+   - Add more RAM/CPU
+
+2. **Horizontal Scaling**:
+   - Enable auto-scaling (2-10 instances)
+   - Add Redis for session management
+   - Implement load balancing
+
+3. **Performance Optimization**:
+   - Enable CDN for static assets
+   - Implement database read replicas
+   - Add caching layer with Redis
+   - Use background jobs for heavy tasks
+
+## Production Checklist
+
+- [ ] SSL certificates active and auto-renewing
+- [ ] Environment variables properly set
+- [ ] Database migrations completed
+- [ ] Admin user created
+- [ ] Webhooks verified and working
+- [ ] CORS configured correctly
+- [ ] Health checks passing
+- [ ] Monitoring alerts configured
+- [ ] Backup strategy implemented
+- [ ] Error tracking enabled
+- [ ] Rate limiting configured
+- [ ] Security headers enabled
 
 ## Troubleshooting
 
@@ -210,13 +336,21 @@ When ready to scale:
 
 ```bash
 # View logs
-render logs bma-social-api
+render logs bma-social-api --tail
+render logs bma-social-frontend --tail
 
 # SSH into service
 render ssh bma-social-api
+render ssh bma-social-frontend
 
 # Run database migrations
 render job create --service bma-social-api --command "cd backend && alembic upgrade head"
+
+# Create database backup
+render postgres backup create bma-social-db
+
+# Run production shell
+render run bma-social-api --command "cd backend && python"
 ```
 
 ## Rollback Procedure
@@ -231,16 +365,55 @@ render job create --service bma-social-api --command "cd backend && alembic upgr
 
 ## Performance Optimization
 
-1. **Enable Caching**
-   - Use Redis for frequently accessed data
-   - Cache CRM customer data (5 min TTL)
-   - Cache message templates
+1. **Frontend Optimization**
+   - Enable code splitting
+   - Lazy load components
+   - Optimize images (WebP format)
+   - Enable gzip compression
+   - Use React.memo for expensive components
+   - Implement virtual scrolling for long lists
 
-2. **Database Optimization**
-   - Add indexes for common queries
-   - Use connection pooling
-   - Regular VACUUM operations
+2. **Backend Optimization**
+   - Enable response caching with Redis
+   - Use database connection pooling
+   - Implement query result caching
+   - Add indexes for common queries:
+     ```sql
+     CREATE INDEX idx_conversations_customer_id ON conversations(customer_id);
+     CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
+     CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+     ```
+   - Use eager loading for relationships
+   - Implement pagination for all list endpoints
 
-3. **CDN for Static Assets**
-   - Use Cloudflare for frontend assets
-   - Cache API responses where appropriate
+3. **Infrastructure Optimization**
+   - Use CDN for static assets (Cloudflare)
+   - Enable HTTP/2
+   - Configure proper cache headers
+   - Use Redis for session storage
+   - Implement request queuing for webhooks
+
+## Security Hardening
+
+1. **Application Security**
+   - Enable security headers (HSTS, CSP, etc.)
+   - Implement request rate limiting
+   - Use prepared statements (via SQLAlchemy)
+   - Validate all input data
+   - Sanitize file uploads
+   - Implement CSRF protection
+
+2. **Infrastructure Security**
+   - Use environment variables for secrets
+   - Enable firewall rules
+   - Restrict database access
+   - Use HTTPS everywhere
+   - Regular security updates
+   - Monitor for vulnerabilities
+
+3. **Access Control**
+   - Implement IP whitelisting for admin
+   - Use strong password policies
+   - Enable 2FA for admin accounts
+   - Regular access audits
+   - Session timeout policies

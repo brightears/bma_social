@@ -15,33 +15,53 @@ BMA Social is a tailored marketing and customer communication platform that cent
 ## 🚀 Key Features
 
 ### Multi-Channel Support
-- **WhatsApp Business API** - Leverage existing integration for customer communications
-- **Line Business** - Connect with Thai customers on their preferred platform  
-- **Email** - Traditional email support for formal communications
+- **WhatsApp Business API** - Fully integrated with real-time messaging
+- **Line Business** - Connect with Thai customers on their preferred platform (planned)
+- **Email** - Traditional email support for formal communications (planned)
 
 ### Conversation Management
-- Unified inbox for all channels
-- Team collaboration with internal notes
+- Unified inbox for WhatsApp conversations
+- Real-time message delivery and status tracking
 - Conversation assignment and routing
-- Full conversation history and context
+- Full conversation history with search capabilities
+- Contact management with custom fields
 
 ### Campaign Management
-- Visual campaign builder
+- Campaign creation and scheduling
 - Message templates with dynamic variables
-- Bulk messaging with segmentation
-- Scheduled campaigns and automated reminders
+- Bulk messaging with contact segmentation
+- Campaign analytics and performance tracking
+- Template library for reusable content
 
-### Customer Intelligence
-- Integration with BMA CRM for customer data
-- Automatic customer segmentation
-- Engagement tracking and analytics
-- Zone status integration for contextual messaging
+### Quotation System
+- Professional quotation generation with PDF export
+- Multi-currency support (THB and USD)
+- Customizable quotation templates
+- Item-based pricing with automatic calculations
+- Tax and discount management
+- Status tracking (draft, sent, viewed, accepted, rejected)
+- Direct sharing via WhatsApp
+
+### Contact Management
+- Comprehensive contact database
+- Custom fields and tags
+- Import/export functionality
+- Contact grouping and segmentation
+- Activity history tracking
+- Integration with conversations and campaigns
+
+### Admin Tools
+- User management with role-based access
+- System configuration
+- Audit logs and activity tracking
+- Database management tools
+- Performance monitoring
 
 ### Team Collaboration
-- Role-based access control
-- @mentions and internal notes
-- Performance metrics per team member
-- Audit logs for compliance
+- Role-based access control (Admin, Manager, Agent)
+- Team member management
+- Performance metrics per user
+- Activity logs for compliance
 
 ## 🛠️ Technology Stack
 
@@ -52,11 +72,14 @@ BMA Social is a tailored marketing and customer communication platform that cent
 - **Celery** - Background task processing
 - **SQLAlchemy** - ORM with async support
 
-### Frontend (Planned)
+### Frontend
 - **React** with TypeScript
-- **Material-UI** or **Ant Design** for components
-- **Redux Toolkit** for state management
-- **Socket.io** for real-time updates
+- **Material-UI** for components
+- **React Query** for data fetching and caching
+- **React Router** for navigation
+- **Axios** for API communication
+- **React Hook Form** for form management
+- **Date-fns** for date handling
 
 ### Infrastructure
 - **Render** - Web service deployment
@@ -200,52 +223,98 @@ See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed instructions.
 - Audit logging for compliance
 - Encrypted message storage
 
-## 🚀 Current Status (July 3, 2025)
+## 🚀 Current Status (January 4, 2025)
 
 ### ✅ Completed Features
 - **Backend API**: Fully deployed on Render at https://bma-social-api.onrender.com
-- **WhatsApp Integration**: Successfully receiving and sending messages
-- **Database**: PostgreSQL on Render with all tables created
-- **Authentication**: JWT-based auth implemented with admin user
-- **Webhook Router**: Deployed separately to forward WhatsApp to both Zone Monitor and BMA Social
-- **Frontend**: React TypeScript app deployed at https://bma-social-frontend.onrender.com
-- **Message Management**: Send/receive WhatsApp messages, conversation tracking
+- **Frontend Application**: React TypeScript app deployed at https://bma-social-frontend.onrender.com
+- **WhatsApp Integration**: 
+  - Real-time message sending and receiving
+  - Media support (images, documents)
+  - Webhook processing with message status updates
+  - Integration with Meta Business API
+- **Conversation Management**:
+  - Real-time conversation view with message history
+  - Contact association and management
+  - Message status tracking (sent, delivered, read)
+  - Search and filtering capabilities
+- **Contact Management**:
+  - Full CRUD operations for contacts
+  - Custom fields and tags
+  - Bulk import/export
+  - Activity tracking
+- **Campaign System**:
+  - Campaign creation and scheduling
+  - Template management
+  - Contact selection and segmentation
+  - Basic analytics
+- **Quotation System**:
+  - Professional quotation generation
+  - Multi-currency support (THB/USD)
+  - PDF generation and export
+  - Template library
+  - WhatsApp sharing integration
+  - Status tracking and analytics
+- **Admin Tools**:
+  - User management
+  - System configuration
+  - Activity logs
+  - Database utilities
+- **Authentication & Security**:
+  - JWT-based authentication
+  - Role-based access control
+  - Secure session management
 
-### 🚧 Current Issues
-- **CORS Configuration**: Frontend login failing due to CORS headers
-  - BACKEND_CORS_ORIGINS set but not properly returned in headers
-  - Temporary workaround: Add wildcard to origins
+### 🚧 Known Issues
+- Some CORS configuration fine-tuning may be needed for specific domains
+- Background job processing for scheduled campaigns needs optimization
+- Real-time updates via WebSocket pending implementation
 
 ### 📝 Access Information
-- **Admin Login**: username: `admin`, password: `changeme123`
+- **Admin Login**: Contact system administrator for credentials
 - **API Base URL**: https://bma-social-api.onrender.com/api/v1
 - **Frontend URL**: https://bma-social-frontend.onrender.com
+- **API Documentation**: https://bma-social-api.onrender.com/docs
 
 ## 📈 Roadmap
 
-### Phase 1: Core Messaging (Current)
+### Phase 1: Core Messaging ✅ (Completed)
 - [x] Project structure setup
-- [x] WhatsApp integration
-- [x] Basic conversation view
-- [x] Team user management (admin created)
+- [x] WhatsApp integration with real-time messaging
+- [x] Conversation management system
+- [x] Contact management
+- [x] User authentication and authorization
 
-### Phase 2: Campaign Management
-- [ ] Template builder
-- [ ] Bulk messaging
-- [ ] Scheduling system
-- [ ] Customer import from CRM
+### Phase 2: Campaign Management ✅ (Completed)
+- [x] Template builder and management
+- [x] Campaign creation and scheduling
+- [x] Contact selection and segmentation
+- [x] Basic campaign analytics
 
-### Phase 3: Multi-channel
+### Phase 3: Business Tools ✅ (Completed)
+- [x] Quotation system with multi-currency
+- [x] PDF generation and export
+- [x] Template library
+- [x] Admin tools and utilities
+
+### Phase 4: Multi-channel (Next)
 - [ ] Line Business integration
-- [ ] Email channel
-- [ ] Unified inbox
-- [ ] Channel preferences
+- [ ] Email channel integration
+- [ ] Unified inbox for all channels
+- [ ] Channel preference management
 
-### Phase 4: Intelligence Layer
-- [ ] Analytics dashboard
-- [ ] Auto-tagging
-- [ ] Smart routing
-- [ ] Performance metrics
+### Phase 5: Intelligence Layer (Future)
+- [ ] Advanced analytics dashboard
+- [ ] AI-powered auto-tagging
+- [ ] Smart conversation routing
+- [ ] Predictive insights
+- [ ] Performance optimization
+
+### Phase 6: Advanced Features (Future)
+- [ ] WebSocket for real-time updates
+- [ ] Advanced automation workflows
+- [ ] CRM deep integration
+- [ ] Mobile app development
 
 ## 🤝 Contributing
 
