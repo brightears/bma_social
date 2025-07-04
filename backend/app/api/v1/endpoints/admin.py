@@ -36,6 +36,15 @@ async def sync_database(
         """))
         tables = [row[0] for row in result.fetchall()]
         
+        # Apply any necessary data migrations
+        # Set default currency for existing quotations
+        await db.execute(text("""
+            UPDATE quotations 
+            SET currency = 'THB' 
+            WHERE currency IS NULL
+        """))
+        await db.commit()
+        
         logger.info(f"Database sync completed. Tables: {tables}")
         
         return {
@@ -196,3 +205,42 @@ async def check_api_routes(
         "quotation_routes": quotation_routes,
         "all_routes": routes
     }
+
+
+@router.post("/fix-quotations-currency")
+async def fix_quotations_currency(
+    current_user: User = Depends(get_current_superuser),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fix existing quotations that don't have currency set
+    Only accessible by superusers
+    """
+    try:
+        # Check how many quotations need fixing
+        result = await db.execute(text("""
+            SELECT COUNT(*) FROM quotations WHERE currency IS NULL
+        """))
+        null_count = result.scalar() or 0
+        
+        # Update quotations with null currency
+        await db.execute(text("""
+            UPDATE quotations 
+            SET currency = 'THB' 
+            WHERE currency IS NULL
+        """))
+        
+        await db.commit()
+        
+        return {
+            "status": "success",
+            "message": f"Fixed {null_count} quotations with missing currency",
+            "quotations_updated": null_count
+        }
+    except Exception as e:
+        logger.error(f"Error fixing quotations currency: {e}")
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fix quotations currency: {str(e)}"
+        )

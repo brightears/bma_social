@@ -17,6 +17,7 @@ import {
   Sync as SyncIcon,
   Info as InfoIcon,
   CheckCircle as CheckCircleIcon,
+  Build as BuildIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
 
@@ -35,6 +36,7 @@ const AdminTools: React.FC = () => {
   const [loadingInfo, setLoadingInfo] = useState(false);
   const [quotationsCheck, setQuotationsCheck] = useState<any>(null);
   const [apiRoutes, setApiRoutes] = useState<any>(null);
+  const [fixingCurrency, setFixingCurrency] = useState(false);
 
   const syncDatabase = async () => {
     try {
@@ -88,6 +90,21 @@ const AdminTools: React.FC = () => {
     }
   };
 
+  const fixQuotationsCurrency = async () => {
+    try {
+      setFixingCurrency(true);
+      setError(null);
+      const response = await api.post('/admin/fix-quotations-currency');
+      setSyncResult(response.data);
+      // Refresh table info after fix
+      await loadDatabaseInfo();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to fix quotations currency');
+    } finally {
+      setFixingCurrency(false);
+    }
+  };
+
   React.useEffect(() => {
     loadDatabaseInfo();
   }, []);
@@ -137,6 +154,15 @@ const AdminTools: React.FC = () => {
             onClick={checkApiRoutes}
           >
             Check API Routes
+          </Button>
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={fixingCurrency ? <CircularProgress size={20} /> : <BuildIcon />}
+            onClick={fixQuotationsCurrency}
+            disabled={fixingCurrency}
+          >
+            {fixingCurrency ? 'Fixing...' : 'Fix Quotations Currency'}
           </Button>
         </Box>
       </Paper>
